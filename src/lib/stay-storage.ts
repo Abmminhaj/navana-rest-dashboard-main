@@ -32,7 +32,7 @@ export function removeActiveStay(id: string) {
   );
 }
 
-export function addDeposit(id: string, amount: number) {
+export function addDeposit(id: string, amount: number, date?: string) {
   const stays = getActiveStays().map((stay: any) => {
     if (stay.id !== id) return stay;
 
@@ -42,7 +42,7 @@ export function addDeposit(id: string, amount: number) {
       ...stay,
       deposits: [
         ...deposits,
-        { amount, date: new Date().toISOString().slice(0, 10) },
+        { amount, date: date || new Date().toISOString().slice(0, 10) },
       ],
     };
   });

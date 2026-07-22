@@ -4,13 +4,12 @@ import { Card, PageHeader, StatusPill, buttonGhost } from "@/components/ui-kit";
 import { type RoomStatus, type Room } from "@/lib/mock-data";
 import { getRooms, updateRoom, resetRoomsToDefault, addRoom, deleteRoom } from "@/lib/room-storage";
 import { X, BedDouble, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { ROOM_TYPE_PRESETS, getRoomTypeColor } from "@/lib/room-type-colors";
 
 export const Route = createFileRoute("/rooms")({
   head: () => ({ meta: [{ title: "Rooms — Navana Rest House" }] }),
   component: RoomsPage,
 });
-
-const ROOM_TYPE_PRESETS = ["Standard", "Deluxe", "Suite", "VIP"];
 
 const statusStyles: Record<
   RoomStatus,
@@ -229,6 +228,16 @@ useEffect(() => {
         ))}
       </div>
 
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span className="font-medium">Room Type Color:</span>
+        {ROOM_TYPE_PRESETS.map((t) => (
+          <span key={t} className="inline-flex items-center gap-1.5">
+            <span className={`text-sm font-bold ${getRoomTypeColor(t)}`}>●</span>
+            {t}
+          </span>
+        ))}
+      </div>
+
       <div className="mt-4 space-y-6">
         {Object.entries(byFloor).map(([floor, list]) => (
           <Card key={floor} className="p-6">
@@ -246,10 +255,16 @@ useEffect(() => {
                     className={`group rounded-xl border p-4 text-left transition ${s.bg}`}
                   >
                     <div className="flex items-start justify-between">
-                      <div className="text-2xl font-bold text-foreground">{r.number}</div>
+                      <div className={`text-2xl font-bold ${getRoomTypeColor(r.type)}`}>{r.number}</div>
                       <span className={`h-2.5 w-2.5 rounded-full ${s.dot}`} />
                     </div>
                     <div className="mt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{r.type}</div>
+                    {(r.amenities || []).length > 0 && (
+                      <div className="mt-1 truncate text-[11px] text-muted-foreground" title={(r.amenities || []).join(", ")}>
+                        {(r.amenities || []).slice(0, 3).join(" · ")}
+                        {(r.amenities || []).length > 3 ? ` +${(r.amenities || []).length - 3}` : ""}
+                      </div>
+                    )}
                     <div className="mt-3 flex items-center justify-between">
                       <StatusPill tone={s.tone}>{r.status}</StatusPill>
                       <span className="text-xs font-semibold text-foreground">৳{r.rent.toLocaleString()}</span>

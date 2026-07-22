@@ -1,9 +1,11 @@
 import { Card } from "@/components/ui-kit";
+import { getRoomTypeColor } from "@/lib/room-type-colors";
 
 interface Room {
   number: string;
   type: string;
   status: string;
+  amenities?: string[];
 }
 
 interface Props {
@@ -47,11 +49,21 @@ export default function RoomStatus({ rooms, statusColor }: Props) {
               key={r.number}
               className={`rounded-xl border px-3 py-3 transition hover:scale-[1.02] ${statusColor[r.status]}`}
             >
-              <div className="text-lg font-bold">{r.number}</div>
+              <div className={`text-lg font-bold ${getRoomTypeColor(r.type)}`}>{r.number}</div>
 
               <div className="mt-1 text-[10px] uppercase opacity-80">
                 {r.type}
               </div>
+
+              {(r.amenities || []).length > 0 && (
+                <div
+                  className="mt-1 truncate text-[10px] opacity-70"
+                  title={(r.amenities || []).join(", ")}
+                >
+                  {(r.amenities || []).slice(0, 2).join(" · ")}
+                  {(r.amenities || []).length > 2 ? ` +${(r.amenities || []).length - 2}` : ""}
+                </div>
+              )}
 
               <div className="mt-2 text-[11px] font-semibold">
                 {r.status}

@@ -52,6 +52,7 @@ function CheckoutPage() {
 
   const [depositTarget, setDepositTarget] = useState<ActiveStay | null>(null);
   const [depositAmount, setDepositAmount] = useState("");
+  const [depositDate, setDepositDate] = useState(new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
     setList(getActiveStays());
@@ -80,10 +81,11 @@ function CheckoutPage() {
     const amt = Number(depositAmount);
     if (!amt || amt <= 0) return;
 
-    addDeposit(depositTarget.id, amt);
+    addDeposit(depositTarget.id, amt, depositDate);
     refreshList();
     setDepositTarget(null);
     setDepositAmount("");
+    setDepositDate(new Date().toISOString().slice(0, 10));
   }
 
   const filtered = list.filter(
@@ -180,6 +182,7 @@ function CheckoutPage() {
                           onClick={() => {
                             setDepositTarget(s);
                             setDepositAmount("");
+                            setDepositDate(new Date().toISOString().slice(0, 10));
                           }}
                           className={buttonGhost + " h-8 px-3 text-xs"}
                         >
@@ -328,11 +331,15 @@ function CheckoutPage() {
         </div>
       )}
 
-      {depositTarget && (
+      {depositTarget && (() => {
+        const live = list.find((s) => s.id === depositTarget.id) || depositTarget;
+        const history = [...(live.deposits || [])].sort((a, b) => (a.date < b.date ? 1 : -1));
+
+        return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl">
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <h3 className="text-base font-bold text-foreground">Add Deposit — Room {depositTarget.room}</h3>
+              <h3 className="text-base font-bold text-foreground">Add Deposit — Room {live.room}</h3>
               <button
                 onClick={() => setDepositTarget(null)}
                 className="rounded-md p-1 text-muted-foreground hover:bg-muted"
@@ -342,18 +349,54 @@ function CheckoutPage() {
             </div>
             <div className="space-y-3 p-6">
               <p className="text-sm text-muted-foreground">
-                {depositTarget.customer} · এখন পর্যন্ত জমা: ৳
-                {(depositTarget.advance + depositsTotalOf(depositTarget)).toLocaleString()}
+                {live.customer} · এখন পর্যন্ত জমা: ৳
+                {(live.advance + depositsTotalOf(live)).toLocaleString()}
               </p>
-              <Field label="Deposit Amount (৳)">
-                <input
-                  type="number"
-                  className={inputClass}
-                  placeholder="0"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                />
-              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Date">
+                  <input
+                    type="date"
+                    className={inputClass}
+                    value={depositDate}
+                    onChange={(e) => setDepositDate(e.target.value)}
+                  />
+                </Field>
+                <Field label="Deposit Amount (৳)">
+                  <input
+                    type="number"
+                    className={inputClass}
+                    placeholder="0"
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                  />
+                </Field>
+              </div>
+
+              {history.length > 0 && (
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Deposit History
+                  </p>
+                  <div className="max-h-40 overflow-y-auto rounded-lg border border-border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-1.5">Date</th>
+                          <th className="px-3 py-1.5 text-right">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {history.map((d, i) => (
+                          <tr key={i} className="border-t border-border">
+                            <td className="px-3 py-1.5 text-muted-foreground">{d.date}</td>
+                            <td className="px-3 py-1.5 text-right font-medium text-foreground">৳{d.amount.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
               <button onClick={() => setDepositTarget(null)} className={buttonGhost}>Cancel</button>
@@ -366,7 +409,8 @@ function CheckoutPage() {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
