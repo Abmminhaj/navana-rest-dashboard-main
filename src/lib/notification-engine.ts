@@ -52,6 +52,28 @@ export function getNotificationPermission(): NotificationPermission {
   return Notification.permission;
 }
 
+export function notifyCheckIn(customer: string, room: string, bookingId?: string) {
+  const prefs = getNotificationPrefs();
+  if (!prefs.checkInAlerts) return;
+
+  fireNotification(
+    "Guest Checked In",
+    `${customer || "Guest"} — Room ${room}${bookingId ? ` (${bookingId})` : ""}`
+  );
+}
+
+export function notifyCheckOut(customer: string, room: string, due?: number) {
+  const prefs = getNotificationPrefs();
+  if (!prefs.checkOutAlerts) return;
+
+  fireNotification(
+    "Guest Checked Out",
+    due && due > 0
+      ? `${customer || "Guest"} — Room ${room} (বকেয়া ৳${due.toLocaleString()})`
+      : `${customer || "Guest"} — Room ${room}`
+  );
+}
+
 function checkPendingCheckouts() {
   const prefs = getNotificationPrefs();
   if (!prefs.pendingCheckoutAlerts) return;

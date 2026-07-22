@@ -8,6 +8,7 @@ import { divisions, getDistrictsByDivision, getUpazilasByDistrict } from "@/lib/
 import { saveBooking, getBookings } from "@/lib/booking-storage";
 import { getRooms, occupyRoom, refreshRooms } from "@/lib/room-storage";
 import { saveActiveStay } from "@/lib/stay-storage";
+import { notifyCheckIn } from "@/lib/notification-engine";
 
 const MIN_PHOTO_SIZE_BYTES = 10 * 1024; // 10KB minimum
 
@@ -248,6 +249,7 @@ function BookingPage() {
   saveActiveStay(activeStay);
   occupyRoom(selectedRoom);
   refreshRooms();
+  notifyCheckIn(customerName, selectedRoom, bookingId);
 
   console.log("Booking Saved:", bookingData);
 

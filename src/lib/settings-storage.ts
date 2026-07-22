@@ -36,6 +36,8 @@ export interface NotificationPrefs {
   lowOccupancyAlerts: boolean;
   paymentReceivedAlerts: boolean;
   maintenanceReminders: boolean;
+  checkInAlerts: boolean;
+  checkOutAlerts: boolean;
 }
 
 const DEFAULT_NOTIFICATIONS: NotificationPrefs = {
@@ -43,6 +45,8 @@ const DEFAULT_NOTIFICATIONS: NotificationPrefs = {
   lowOccupancyAlerts: true,
   paymentReceivedAlerts: true,
   maintenanceReminders: false,
+  checkInAlerts: true,
+  checkOutAlerts: true,
 };
 
 export function getNotificationPrefs(): NotificationPrefs {

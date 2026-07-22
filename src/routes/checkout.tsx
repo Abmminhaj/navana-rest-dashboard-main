@@ -17,6 +17,7 @@ import { getActiveStays, removeActiveStay, addDeposit } from "@/lib/stay-storage
 import { updateRoomStatus } from "@/lib/room-storage";
 import type { ActiveStay } from "@/lib/mock-data";
 import { saveCustomerHistory } from "@/lib/customer-history-storage";
+import { notifyCheckOut } from "@/lib/notification-engine";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({ meta: [{ title: "Check Out — Navana Rest House" }] }),
@@ -305,6 +306,8 @@ function CheckoutPage() {
   removeActiveStay(active.id);
 
   updateRoomStatus(active.room, "Available");
+
+  notifyCheckOut(active.customer, active.room, finalDue);
 
   refreshList();
 

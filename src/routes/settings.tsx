@@ -15,6 +15,8 @@ export const Route = createFileRoute("/settings")({
 });
 
 const NOTIFICATION_ITEMS: { key: keyof NotificationPrefs; label: string; desc: string }[] = [
+  { key: "checkInAlerts", label: "Check-in alerts", desc: "Instant notification when a guest checks in" },
+  { key: "checkOutAlerts", label: "Check-out alerts", desc: "Instant notification when a guest checks out" },
   { key: "pendingCheckoutAlerts", label: "Pending checkout alerts", desc: "Notify 1 hour before expected checkout" },
   { key: "lowOccupancyAlerts", label: "Low occupancy alerts", desc: "Daily summary at 9:00 AM" },
   { key: "paymentReceivedAlerts", label: "Payment received alerts", desc: "Instant notification" },
