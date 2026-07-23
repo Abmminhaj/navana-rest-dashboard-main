@@ -6,6 +6,7 @@ import {
   getHotelProfile, saveHotelProfile, type HotelProfile,
   getNotificationPrefs, saveNotificationPrefs, type NotificationPrefs,
   getStaff, addStaffMember, updateStaffMember, deleteStaffMember, type StaffMember,
+  setAdminPassword,
 } from "@/lib/settings-storage";
 import { getNotificationPermission, requestNotificationPermission } from "@/lib/notification-engine";
 
@@ -34,6 +35,9 @@ function SettingsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editRole, setEditRole] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordMsg, setPasswordMsg] = useState("");
   const [editEmail, setEditEmail] = useState("");
 
   const [showInvite, setShowInvite] = useState(false);
@@ -118,6 +122,21 @@ function SettingsPage() {
     setInviteEmail("");
     setInviteRole("Receptionist");
     setInviteError("");
+  }
+
+  function handleSavePassword() {
+    if (newPassword.length < 4) {
+      setPasswordMsg("কমপক্ষে ৪ ক্যারেক্টার দিতে হবে।");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg("দুটো Password মিলছে না।");
+      return;
+    }
+    setAdminPassword(newPassword);
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordMsg("✓ Admin Password Update হয়েছে।");
   }
 
   if (!profile || !prefs) return null;
@@ -265,14 +284,36 @@ function SettingsPage() {
           <SectionTitle title="Security" action={<Shield className="h-4 w-4 text-muted-foreground" />} />
           <div className="space-y-4 p-6">
             <div className="rounded-lg bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
-              Login/Password System এখনো নেই — SQLite Migration-এর সাথে যোগ হবে।
+              Login/Password System এখনো নেই — SQLite Migration-এর সাথে যোগ হবে। এই Password শুধু Rooms Page-এ "Available → Occupied" Override করার জন্য ব্যবহার হয় (Full Security না, শুধু ভুল প্রতিরোধের জন্য)।
             </div>
-            <Field label="Change Password">
-              <input type="password" className={inputClass} placeholder="New password" disabled />
+            <Field label="New Admin Password">
+              <input
+                type="password"
+                className={inputClass}
+                placeholder="New password"
+                value={newPassword}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  setPasswordMsg("");
+                }}
+              />
             </Field>
             <Field label="Confirm Password">
-              <input type="password" className={inputClass} placeholder="Confirm new password" disabled />
+              <input
+                type="password"
+                className={inputClass}
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setPasswordMsg("");
+                }}
+              />
             </Field>
+            {passwordMsg && (
+              <p className={`text-xs ${passwordMsg.startsWith("✓") ? "text-emerald-600" : "text-red-600"}`}>{passwordMsg}</p>
+            )}
+            <button onClick={handleSavePassword} className={buttonPrimary}>Update Admin Password</button>
             <div className="flex items-center justify-between rounded-xl border border-border p-4">
               <div>
                 <div className="text-sm font-semibold text-foreground">Two-factor authentication</div>

@@ -210,7 +210,7 @@ function CheckoutPage() {
 
       {active && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-2xl border border-border bg-card shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
             <div className="flex items-start justify-between border-b border-border px-6 py-4">
               <div>
                 <h3 className="text-base font-bold text-foreground">Checkout — Room {active.room}</h3>
@@ -337,7 +337,7 @@ function CheckoutPage() {
 
         return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <h3 className="text-base font-bold text-foreground">Add Deposit — Room {live.room}</h3>
               <button

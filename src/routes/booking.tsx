@@ -97,6 +97,7 @@ function BookingPage() {
   const [showSuggestion, setShowSuggestion] = useState(true);
   const [previousDue, setPreviousDue] = useState(0);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [roomTypeFilter, setRoomTypeFilter] = useState("");
   const [customerHistory, setCustomerHistory] = useState<CustomerHistoryRecord[]>([]);
   const [bookingId, setBookingId] = useState("");
 
@@ -165,6 +166,10 @@ function BookingPage() {
   }, [phone, customerHistory]);
 
   const availableRooms = rooms.filter((r) => r.status === "Available");
+  const roomTypesInUse = Array.from(new Set(rooms.map((r) => r.type))).sort();
+  const filteredAvailableRooms = roomTypeFilter
+    ? availableRooms.filter((r) => r.type === roomTypeFilter)
+    : availableRooms;
   const roomInfo = availableRooms.find(
   (r) => r.number === selectedRoom
 );
@@ -261,6 +266,7 @@ function BookingPage() {
 function resetForm() {
   setPhone("");
   setSelectedRoom("");
+  setRoomTypeFilter("");
   setGuestType("Walk-in Guest");
   setAdvancePayment(0);
   setNotes("");
@@ -633,6 +639,31 @@ function resetForm() {
           <Card>
             <SectionTitle title="Room Information" action={<BedDouble className="h-4 w-4 text-muted-foreground" />} />
             <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
+              <Field label="Room Type">
+                <select
+                  className={selectClass}
+                  value={roomTypeFilter}
+                  onChange={(e) => {
+                    const newFilter = e.target.value;
+                    setRoomTypeFilter(newFilter);
+
+                    if (newFilter && selectedRoom) {
+                      const stillValid = availableRooms.find(
+                        (r) => r.number === selectedRoom && r.type === newFilter
+                      );
+                      if (!stillValid) {
+                        setSelectedRoom("");
+                        setRoomRent("");
+                      }
+                    }
+                  }}
+                >
+                  <option value="">All Types</option>
+                  {roomTypesInUse.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </Field>
               <Field label="Room Number">
   <select
     className={selectClass}
@@ -646,24 +677,20 @@ function resetForm() {
       );
 
       setRoomRent(room ? room.rent.toString() : "");
+      if (room) setRoomTypeFilter(room.type);
     }}
   >
     <option value="">Select Room</option>
 
-    {availableRooms.map((r) => (
+    {filteredAvailableRooms.map((r) => (
       <option key={r.number} value={r.number}>
         {r.number}
       </option>
     ))}
   </select>
-</Field>
-              <Field label="Room Type">
-  <input
-    className={inputClass}
-    value={roomInfo?.type || ""}
-    readOnly
-    placeholder="Select a room first"
-  />
+  {roomTypeFilter && filteredAvailableRooms.length === 0 && (
+    <p className="mt-1 text-xs text-amber-600">এই মুহূর্তে কোনো Available {roomTypeFilter} Room নেই।</p>
+  )}
 </Field>
               <Field label="Check-in Date">
                 <input

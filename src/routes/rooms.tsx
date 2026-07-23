@@ -5,6 +5,8 @@ import { type RoomStatus, type Room } from "@/lib/mock-data";
 import { getRooms, updateRoom, resetRoomsToDefault, addRoom, deleteRoom } from "@/lib/room-storage";
 import { X, BedDouble, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { ROOM_TYPE_PRESETS, getRoomTypeColor } from "@/lib/room-type-colors";
+import { verifyAdminPassword } from "@/lib/settings-storage";
+import { getActiveStays } from "@/lib/stay-storage";
 
 export const Route = createFileRoute("/rooms")({
   head: () => ({ meta: [{ title: "Rooms — Navana Rest House" }] }),
@@ -71,6 +73,10 @@ useEffect(() => {
   const [editAmenities, setEditAmenities] = useState<string[]>([]);
   const [newAmenity, setNewAmenity] = useState("");
   const [note, setNote] = useState("");
+  const [overrideNote, setOverrideNote] = useState("");
+  const [overridePassword, setOverridePassword] = useState("");
+  const [overrideError, setOverrideError] = useState("");
+  const [hasRealBooking, setHasRealBooking] = useState(false);
 
   function openRoom(r: Room) {
     setSelected(r);
@@ -81,6 +87,10 @@ useEffect(() => {
     setEditAmenities(r.amenities || []);
     setNewAmenity("");
     setNote(r.notes || "");
+    setOverrideNote("");
+    setOverridePassword("");
+    setOverrideError("");
+    setHasRealBooking(getActiveStays().some((s: any) => s.room === r.number));
   }
 
   function addAmenity() {
@@ -99,12 +109,43 @@ useEffect(() => {
   const handleSaveRoom = () => {
   if (!selected) return;
 
+  // Rule 1: Occupied room WITH a real booking can't change manually — must go through Checkout
+  if (selected.status === "Occupied" && hasRealBooking && editStatus !== "Occupied") {
+    setOverrideError("এই Room-এ একটা Real Booking আছে। Checkout Page থেকে Checkout না করা পর্যন্ত Status পরিবর্তন করা যাবে না।");
+    return;
+  }
+
+  // Rule 1b: Occupied room WITHOUT a real booking (manual override) — releasing it still needs Admin Password
+  if (selected.status === "Occupied" && !hasRealBooking && editStatus !== "Occupied") {
+    if (!verifyAdminPassword(overridePassword)) {
+      setOverrideError("এই Room আগে Manual ভাবে Occupied করা হয়েছিল (কোনো Real Booking নেই)। Release করতে Admin Password দাও।");
+      return;
+    }
+  }
+
+  // Rule 2: Non-Occupied → Occupied requires a Special Note + Admin Password
+  if (selected.status !== "Occupied" && editStatus === "Occupied") {
+    if (!overrideNote.trim()) {
+      setOverrideError("Special Note লিখতে হবে।");
+      return;
+    }
+    if (!verifyAdminPassword(overridePassword)) {
+      setOverrideError("Admin Password ভুল হয়েছে।");
+      return;
+    }
+  }
+
+  setOverrideError("");
+
   updateRoom(selected.number, {
     status: editStatus,
     type: editType.trim() || "Standard",
     rent: Number(editRent) || 0,
     amenities: editAmenities,
-    notes: note,
+    notes:
+      selected.status !== "Occupied" && editStatus === "Occupied"
+        ? `${note ? note + " | " : ""}Manual Occupied Override: ${overrideNote.trim()}`
+        : note,
   });
 
   setSelected(null);
@@ -279,7 +320,7 @@ useEffect(() => {
 
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
             <div className="flex items-start justify-between border-b border-border px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-soft text-primary">
@@ -340,20 +381,81 @@ useEffect(() => {
     Room Status
   </label>
 
-  <select
-    value={editStatus}
-    onChange={(e) =>
-      setEditStatus(e.target.value as RoomStatus)
-    }
-    className="w-full rounded-lg border border-border bg-background px-3 py-2"
-  >
-    <option value="Available">Available</option>
-    <option value="Occupied">Occupied</option>
-    <option value="Reserved">Reserved</option>
-    <option value="Cleaning">Cleaning</option>
-    <option value="Maintenance">Maintenance</option>
-  </select>
+  {selected.status === "Occupied" && hasRealBooking ? (
+    <>
+      <input
+        value="Occupied"
+        readOnly
+        className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-muted-foreground"
+      />
+      <p className="text-xs text-amber-600">
+        এই Room-এ Guest Check-in আছে। Status পরিবর্তন করতে হলে Checkout Page থেকে Checkout করাও।
+      </p>
+    </>
+  ) : (
+    <select
+      value={editStatus}
+      onChange={(e) => {
+        setEditStatus(e.target.value as RoomStatus);
+        setOverrideError("");
+      }}
+      className="w-full rounded-lg border border-border bg-background px-3 py-2"
+    >
+      <option value="Available">Available</option>
+      <option value="Occupied">Occupied</option>
+      <option value="Reserved">Reserved</option>
+      <option value="Cleaning">Cleaning</option>
+      <option value="Maintenance">Maintenance</option>
+    </select>
+  )}
 </div>
+{selected.status === "Occupied" && !hasRealBooking && editStatus !== "Occupied" && (
+  <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+    <p className="text-xs font-semibold text-amber-800">
+      ⚠️ এই Room আগে Manual ভাবে Occupied করা হয়েছিল, কোনো Real Booking নেই। Release করতে Admin Password দাও:
+    </p>
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-foreground">Admin Password</label>
+      <input
+        type="password"
+        value={overridePassword}
+        onChange={(e) => setOverridePassword(e.target.value)}
+        placeholder="Admin Password দাও"
+        className="w-full rounded-lg border border-border bg-background px-3 py-2"
+      />
+    </div>
+  </div>
+)}
+{selected.status !== "Occupied" && editStatus === "Occupied" && (
+  <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+    <p className="text-xs font-semibold text-amber-800">
+      ⚠️ সরাসরি Available থেকে Occupied করছো — সাধারণত এটা Booking Page দিয়ে হওয়া উচিত। যদি নিশ্চিত থাকো, নিচে দাও:
+    </p>
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-foreground">Special Note (কেন Manual করা হলো)</label>
+      <textarea
+        value={overrideNote}
+        onChange={(e) => setOverrideNote(e.target.value)}
+        rows={2}
+        placeholder="যেমন: Walk-in guest, system-এ ঝামেলা হচ্ছিল ইত্যাদি"
+        className="w-full rounded-lg border border-border bg-background px-3 py-2"
+      />
+    </div>
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-foreground">Admin Password</label>
+      <input
+        type="password"
+        value={overridePassword}
+        onChange={(e) => setOverridePassword(e.target.value)}
+        placeholder="Admin Password দাও"
+        className="w-full rounded-lg border border-border bg-background px-3 py-2"
+      />
+    </div>
+  </div>
+)}
+{overrideError && (
+  <p className="text-xs font-medium text-red-600">{overrideError}</p>
+)}
 <div className="space-y-2">
   <label className="text-sm font-medium text-foreground">
     Notes
@@ -441,7 +543,7 @@ useEffect(() => {
 
       {showAddRoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <h3 className="text-base font-bold text-foreground">Add New Room</h3>
               <button

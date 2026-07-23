@@ -120,6 +120,22 @@ export function getAdminFullName(): string {
   return admin ? admin.name : "Admin";
 }
 
+const ADMIN_PASSWORD_KEY = "navana_admin_password";
+const DEFAULT_ADMIN_PASSWORD = "admin123";
+
+export function getAdminPasswordIsSet(): boolean {
+  return !!localStorage.getItem(ADMIN_PASSWORD_KEY);
+}
+
+export function setAdminPassword(newPassword: string) {
+  localStorage.setItem(ADMIN_PASSWORD_KEY, newPassword);
+}
+
+export function verifyAdminPassword(input: string): boolean {
+  const stored = localStorage.getItem(ADMIN_PASSWORD_KEY) || DEFAULT_ADMIN_PASSWORD;
+  return input === stored;
+}
+
 export function refreshSettings() {
   window.dispatchEvent(new Event("settingsUpdated"));
 }
