@@ -4,7 +4,8 @@ const STAFF_KEY = "navana_staff";
 
 export interface HotelProfile {
   hotelName: string;
-  contactPhone: string;
+  /** One or more contact numbers (Settings → Hotel Profile → Contact Numbers). */
+  contactPhones: string[];
   address: string;
   currency: string;
   timezone: string;
@@ -12,7 +13,7 @@ export interface HotelProfile {
 
 const DEFAULT_PROFILE: HotelProfile = {
   hotelName: "Navana Rest House",
-  contactPhone: "+880 1711-000000",
+  contactPhones: ["+880 1711-000000"],
   address: "Kazi Roman Complex, Kalitola, Nilphamari Sadar, Nilphamari",
   currency: "BDT (৳)",
   timezone: "Asia/Dhaka (GMT+6)",
@@ -20,7 +21,23 @@ const DEFAULT_PROFILE: HotelProfile = {
 
 export function getHotelProfile(): HotelProfile {
   const saved = localStorage.getItem(HOTEL_PROFILE_KEY);
-  if (saved) return JSON.parse(saved);
+  if (saved) {
+    const parsed = JSON.parse(saved);
+
+    // Migrate older profiles that stored a single `contactPhone` string.
+    if (!Array.isArray(parsed.contactPhones)) {
+      const legacy: string | undefined = parsed.contactPhone;
+      parsed.contactPhones = legacy ? [legacy] : [...DEFAULT_PROFILE.contactPhones];
+      delete parsed.contactPhone;
+      localStorage.setItem(HOTEL_PROFILE_KEY, JSON.stringify(parsed));
+    }
+
+    if (parsed.contactPhones.length === 0) {
+      parsed.contactPhones = [""];
+    }
+
+    return parsed;
+  }
 
   localStorage.setItem(HOTEL_PROFILE_KEY, JSON.stringify(DEFAULT_PROFILE));
   return { ...DEFAULT_PROFILE };

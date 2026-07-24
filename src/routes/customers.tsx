@@ -3,9 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, Printer, X, ImageOff } from "lucide-react";
 import { Card, Field, PageHeader, SectionTitle, buttonGhost, buttonPrimary, inputClass } from "@/components/ui-kit";
 import { getCustomerHistory, type CustomerHistoryRecord } from "@/lib/customer-history-storage";
+import { PrintLetterhead } from "@/components/PrintLetterhead";
 
 export const Route = createFileRoute("/customers")({
   head: () => ({ meta: [{ title: "Customer Information — Navana Rest House" }] }),
+  validateSearch: (search: Record<string, unknown>): { highlight?: string } => ({
+    highlight: typeof search.highlight === "string" ? search.highlight : undefined,
+  }),
   component: CustomersPage,
 });
 
@@ -84,6 +88,7 @@ function buildProfiles(history: CustomerHistoryRecord[]): CustomerProfile[] {
 }
 
 function CustomersPage() {
+  const { highlight } = Route.useSearch();
   const [history, setHistory] = useState<CustomerHistoryRecord[]>([]);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<CustomerProfile | null>(null);
@@ -95,6 +100,15 @@ function CustomersPage() {
   }, []);
 
   const profiles = useMemo(() => buildProfiles(history), [history]);
+
+  useEffect(() => {
+    if (!highlight || profiles.length === 0) return;
+    const match = profiles.find((p) => p.key === highlight);
+    if (!match) return;
+    setSelected(match);
+    const row = document.getElementById(`customer-row-${highlight}`);
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlight, profiles]);
 
  const filtered = useMemo(() => {
   return profiles.filter((p) => {
@@ -222,7 +236,10 @@ function exportExcel() {
                 {filtered.map((p) => (
                   <tr
                     key={p.key}
-                    className="cursor-pointer border-t border-border hover:bg-muted/30"
+                    id={`customer-row-${p.key}`}
+                    className={`cursor-pointer border-t border-border hover:bg-muted/30 ${
+                      highlight === p.key ? "bg-primary-soft/60 ring-2 ring-inset ring-primary/40" : ""
+                    }`}
                     onClick={() => setSelected(p)}
                   >
                     <td className="px-4 py-3 text-muted-foreground">{p.lastVisit || "—"}</td>
@@ -432,11 +449,7 @@ function exportExcel() {
           <div className="hidden print:block">
             <style>{`@media print { @page { size: A4; margin: 16mm; } }`}</style>
             <div className="mx-auto max-w-[720px] p-4 text-black">
-              <div className="mb-6 border-b-2 border-black pb-4 text-center">
-                <h1 className="text-2xl font-bold">Navana Rest House</h1>
-                <p className="text-sm">Customer Details</p>
-                <p className="mt-1 text-xs text-gray-500">Printed on {new Date().toLocaleDateString()}</p>
-              </div>
+              <PrintLetterhead documentTitle="Customer Details" />
 
               <div className="mb-5">
                 <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">Personal Information</h2>

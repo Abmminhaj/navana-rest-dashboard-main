@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { Bell, Search, Hotel, ChevronDown } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Bell, Search, Hotel, ChevronDown, X, BedDouble, UserRound, History } from "lucide-react";
 import { getNotificationLog, markAllRead, markRead, type NotificationLogEntry } from "@/lib/notification-log-storage";
 import { getAdminFullName } from "@/lib/settings-storage";
+import { searchAll, searchResultTypeLabel, type SearchResult, type SearchResultType } from "@/lib/global-search";
 
 const navItems = [
   { to: "/", label: "Dashboard" },
@@ -113,6 +114,113 @@ function NotificationBell() {
   );
 }
 
+const RESULT_ICON: Record<SearchResultType, typeof UserRound> = {
+  guest: UserRound,
+  customer: History,
+  room: BedDouble,
+};
+
+function NavSearch() {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const results = query.trim().length > 0 ? searchAll(query) : [];
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function goTo(result: SearchResult) {
+    navigate({ to: result.route, search: { highlight: result.highlightKey } } as any);
+    setQuery("");
+    setOpen(false);
+  }
+
+  function clear() {
+    setQuery("");
+    setOpen(false);
+  }
+
+  const grouped: Record<SearchResultType, SearchResult[]> = {
+    guest: results.filter((r) => r.type === "guest"),
+    customer: results.filter((r) => r.type === "customer"),
+    room: results.filter((r) => r.type === "room"),
+  };
+
+  return (
+    <div className="relative hidden md:block w-80" ref={ref}>
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <input
+        type="text"
+        placeholder="Search customer, phone, room, NID…"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        className="h-10 w-full rounded-lg border border-border bg-background pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+      />
+      {query && (
+        <button
+          onClick={clear}
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+
+      {open && query.trim().length > 0 && (
+        <div className="absolute left-0 top-12 z-50 w-full rounded-xl border border-border bg-card shadow-2xl">
+          {results.length === 0 ? (
+            <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+              কোনো ফলাফল পাওয়া যায়নি
+            </div>
+          ) : (
+            <div className="max-h-96 overflow-y-auto py-1">
+              {(["guest", "customer", "room"] as SearchResultType[]).map((type) =>
+                grouped[type].length === 0 ? null : (
+                  <div key={type} className="py-1">
+                    <div className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {searchResultTypeLabel(type)}
+                    </div>
+                    {grouped[type].map((r) => {
+                      const Icon = RESULT_ICON[r.type];
+                      return (
+                        <button
+                          key={r.id}
+                          onClick={() => goTo(r)}
+                          className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-muted/40"
+                        >
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-semibold text-foreground">{r.title}</div>
+                            <div className="truncate text-[11px] text-muted-foreground">{r.subtitle}</div>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TopNav({ className = "" }: { className?: string }) {
   const [adminName, setAdminName] = useState("Arif Rahman");
 
@@ -140,14 +248,7 @@ export function TopNav({ className = "" }: { className?: string }) {
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-3">
-            <div className="relative hidden md:block w-80">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search customer, phone, room, NID…"
-                className="h-10 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
+            <NavSearch />
 
             <NotificationBell />
 

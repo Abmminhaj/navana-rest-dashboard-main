@@ -4,6 +4,7 @@ import { Card, PageHeader, StatusPill, buttonGhost } from "@/components/ui-kit";
 import { Download, Printer, FileText, TrendingUp, TrendingDown, Wallet, Percent } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line } from "recharts";
 import { getReportData, percentDelta, type ReportPeriod, type PeriodRow } from "@/lib/reports-data";
+import { PrintLetterhead } from "@/components/PrintLetterhead";
 
 export const Route = createFileRoute("/reports")({
   head: () => ({ meta: [{ title: "Reports — Navana Rest House" }] }),
@@ -75,9 +76,8 @@ function ReportsPage() {
         }
       `}</style>
 
-      <div className="print-only mb-4 hidden">
-        <h1 className="text-lg font-bold text-foreground">Navana Rest House — {tab} Report</h1>
-        <p className="text-xs text-muted-foreground">Printed on {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</p>
+      <div className="print-only hidden text-black">
+        <PrintLetterhead documentTitle={`${tab} Report`} />
       </div>
 
       <PageHeader

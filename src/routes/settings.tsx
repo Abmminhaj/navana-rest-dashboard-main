@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, Field, PageHeader, SectionTitle, buttonGhost, buttonPrimary, inputClass, selectClass } from "@/components/ui-kit";
-import { Building2, Users, Bell, Shield, Pencil, Trash2, Check, X } from "lucide-react";
+import { Building2, Users, Bell, Shield, Pencil, Trash2, Check, X, Plus } from "lucide-react";
 import {
   getHotelProfile, saveHotelProfile, type HotelProfile,
   getNotificationPrefs, saveNotificationPrefs, type NotificationPrefs,
@@ -63,9 +63,37 @@ function SettingsPage() {
     setProfileSaved(false);
   }
 
+  function handleContactChange(index: number, value: string) {
+    setProfile((p) => {
+      if (!p) return p;
+      const contactPhones = [...p.contactPhones];
+      contactPhones[index] = value;
+      return { ...p, contactPhones };
+    });
+    setProfileSaved(false);
+  }
+
+  function handleAddContact() {
+    setProfile((p) => (p ? { ...p, contactPhones: [...p.contactPhones, ""] } : p));
+    setProfileSaved(false);
+  }
+
+  function handleRemoveContact(index: number) {
+    setProfile((p) => {
+      if (!p) return p;
+      if (p.contactPhones.length <= 1) return p;
+      const contactPhones = p.contactPhones.filter((_, i) => i !== index);
+      return { ...p, contactPhones };
+    });
+    setProfileSaved(false);
+  }
+
   function handleSaveProfile() {
     if (!profile) return;
-    saveHotelProfile(profile);
+    const cleaned = profile.contactPhones.map((p) => p.trim()).filter(Boolean);
+    const toSave: HotelProfile = { ...profile, contactPhones: cleaned.length > 0 ? cleaned : [""] };
+    saveHotelProfile(toSave);
+    setProfile(toSave);
     setProfileSaved(true);
     setTimeout(() => setProfileSaved(false), 2000);
   }
@@ -152,9 +180,39 @@ function SettingsPage() {
             <Field label="Hotel Name">
               <input className={inputClass} value={profile.hotelName} onChange={(e) => handleProfileChange("hotelName", e.target.value)} />
             </Field>
-            <Field label="Contact Phone">
-              <input className={inputClass} value={profile.contactPhone} onChange={(e) => handleProfileChange("contactPhone", e.target.value)} />
-            </Field>
+            <div>
+              <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Contact Number(s)
+              </span>
+              <div className="space-y-2">
+                {profile.contactPhones.map((phone, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      className={inputClass}
+                      placeholder={`Contact Number ${i + 1}`}
+                      value={phone}
+                      onChange={(e) => handleContactChange(i, e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveContact(i)}
+                      disabled={profile.contactPhones.length <= 1}
+                      className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-30"
+                      title="Remove"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={handleAddContact}
+                className={buttonGhost + " mt-2 h-8 px-3 text-xs"}
+              >
+                <Plus className="h-3.5 w-3.5" /> Add Contact Number
+              </button>
+            </div>
             <div className="md:col-span-2">
               <Field label="Address">
                 <input className={inputClass} value={profile.address} onChange={(e) => handleProfileChange("address", e.target.value)} />

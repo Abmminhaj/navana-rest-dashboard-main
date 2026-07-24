@@ -10,6 +10,9 @@ import { getActiveStays } from "@/lib/stay-storage";
 
 export const Route = createFileRoute("/rooms")({
   head: () => ({ meta: [{ title: "Rooms — Navana Rest House" }] }),
+  validateSearch: (search: Record<string, unknown>): { highlight?: string } => ({
+    highlight: typeof search.highlight === "string" ? search.highlight : undefined,
+  }),
   component: RoomsPage,
 });
 
@@ -49,6 +52,7 @@ const statusStyles: Record<
 };
 
 function RoomsPage() {
+  const { highlight } = Route.useSearch();
   const [filter, setFilter] = useState<RoomStatus | "All">("All");
   const [rooms, setRooms] = useState<Room[]>([]);
 
@@ -90,6 +94,16 @@ function RoomsPage() {
     setOverrideError("");
     setHasRealBooking(getActiveStays().some((s: any) => s.room === r.number));
   }
+
+  useEffect(() => {
+    if (!highlight || rooms.length === 0) return;
+    const match = rooms.find((r) => r.number === highlight);
+    if (!match) return;
+    openRoom(match);
+    const card = document.getElementById(`room-card-${highlight}`);
+    card?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlight, rooms]);
 
   function addAmenity() {
     const trimmed = newAmenity.trim();
@@ -298,8 +312,11 @@ function RoomsPage() {
                 return (
                   <button
                     key={r.number}
+                    id={`room-card-${r.number}`}
                     onClick={() => openRoom(r)}
-                    className={`group rounded-xl border p-4 text-left transition ${s.bg}`}
+                    className={`group rounded-xl border p-4 text-left transition ${s.bg} ${
+                      highlight === r.number ? "ring-2 ring-primary ring-offset-2" : ""
+                    }`}
                   >
                     <div className="flex items-start justify-between">
                       <div className={`text-2xl font-bold ${getRoomTypeColor(r.type)}`}>{r.number}</div>
