@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { LogOut, X, Search, Wallet, Printer, CheckCircle2 } from "lucide-react";
+import { LogOut, X, Search, Wallet, Download } from "lucide-react";
 import {
   Card,
   Field,
@@ -18,38 +18,11 @@ import { updateRoomStatus } from "@/lib/room-storage";
 import type { ActiveStay } from "@/lib/mock-data";
 import { saveCustomerHistory } from "@/lib/customer-history-storage";
 import { notifyCheckOut } from "@/lib/notification-engine";
-import { getHotelProfile } from "@/lib/settings-storage";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({ meta: [{ title: "Check Out — Navana Rest House" }] }),
-  validateSearch: (search: Record<string, unknown>): { highlight?: string } => ({
-    highlight: typeof search.highlight === "string" ? search.highlight : undefined,
-  }),
   component: CheckoutPage,
 });
-
-interface CompletedInvoice {
-  invoiceNo: string;
-  room: string;
-  customer: string;
-  phone: string;
-  nid: string;
-  address: string;
-  checkIn: string;
-  checkoutDate: string;
-  checkoutTime: string;
-  nights: number;
-  rent: number;
-  stayTotal: number;
-  previousDue: number;
-  advance: number;
-  deposits: number;
-  paidNow: number;
-  paymentMethod: string;
-  totalDue: number;
-  finalDue: number;
-  notes?: string;
-}
 
 function nowHHMM() {
   const d = new Date();
@@ -68,17 +41,15 @@ function nightsBetween(checkIn: string, endDateISO: string) {
 }
 
 function CheckoutPage() {
-  const { highlight } = Route.useSearch();
   const [list, setList] = useState<ActiveStay[]>([]);
   const [active, setActive] = useState<ActiveStay | null>(null);
   const [query, setQuery] = useState("");
+
   const [checkoutDate, setCheckoutDate] = useState(new Date().toISOString().slice(0, 10));
   const [checkoutTime, setCheckoutTime] = useState(nowHHMM());
   const [paidNow, setPaidNow] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [checkoutNotes, setCheckoutNotes] = useState("");
-
-  const [completedInvoice, setCompletedInvoice] = useState<CompletedInvoice | null>(null);
 
   const [depositTarget, setDepositTarget] = useState<ActiveStay | null>(null);
   const [depositAmount, setDepositAmount] = useState("");
@@ -87,12 +58,6 @@ function CheckoutPage() {
   useEffect(() => {
     setList(getActiveStays());
   }, []);
-
-  useEffect(() => {
-    if (!highlight || list.length === 0) return;
-    const row = document.getElementById(`stay-row-${highlight}`);
-    row?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [highlight, list]);
 
   function refreshList() {
     setList(getActiveStays());
@@ -131,6 +96,37 @@ function CheckoutPage() {
       s.phone.includes(query),
   );
 
+  function handleExportList() {
+    const today = new Date().toISOString().slice(0, 10);
+    const header = [
+      "Room", "Customer", "Phone", "NID", "Check In", "Expected Check Out",
+      "Advance", "Deposits", "Total Paid", "Estimated Due (Today)",
+    ];
+
+    const rows = filtered.map((s) => {
+      const dep = depositsTotalOf(s);
+      const totalPaid = s.advance + dep;
+      const nightsSoFar = nightsBetween(s.checkIn, today);
+      const estDue = Math.max(0, s.rent * nightsSoFar + (s.previousDue || 0) - totalPaid);
+      return [
+        s.room, s.customer, s.phone, s.nid, s.checkIn, s.expectedCheckOut,
+        String(s.advance), String(dep), String(totalPaid), String(estDue),
+      ];
+    });
+
+    const csv = [header, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `navana-pending-checkouts-${today}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   const actualNights = active ? nightsBetween(active.checkIn, checkoutDate) : 0;
   const activeDepositsTotal = active ? depositsTotalOf(active) : 0;
   const stayTotal = active ? active.rent * actualNights : 0;
@@ -140,12 +136,15 @@ function CheckoutPage() {
   const outstandingAfter = totalDue - paidNow;
 
   return (
-    <>
-    <div className="print:hidden">
+    <div>
       <PageHeader
         title="Pending Check Outs"
         description="Guests currently checked-in. Complete checkout to settle balance and free the room."
-        actions={<button className={buttonGhost}>Export List</button>}
+        actions={
+          <button onClick={handleExportList} className={buttonGhost} disabled={filtered.length === 0}>
+            <Download className="h-4 w-4" /> Export List
+          </button>
+        }
       />
 
       <Card>
@@ -163,7 +162,6 @@ function CheckoutPage() {
             <span className="font-semibold text-foreground">{filtered.length}</span> active stays
           </div>
         </div>
-
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -184,15 +182,8 @@ function CheckoutPage() {
                 const totalPaid = s.advance + dep;
                 const nightsSoFar = nightsBetween(s.checkIn, new Date().toISOString().slice(0, 10));
                 const estDue = s.rent * nightsSoFar + (s.previousDue || 0) - totalPaid;
-
                 return (
-                  <tr
-                    key={s.id}
-                    id={`stay-row-${s.id}`}
-                    className={`border-b border-border last:border-0 hover:bg-muted/30 ${
-                      highlight === s.id ? "bg-primary-soft/60 ring-2 ring-inset ring-primary/40" : ""
-                    }`}
-                  >
+                  <tr key={s.id} className="border-b border-border last:border-0 hover:bg-muted/30">
                     <td className="px-4 py-3">
                       <span className="inline-flex h-9 w-12 items-center justify-center rounded-md bg-primary-soft text-sm font-bold text-primary">
                         {s.room}
@@ -321,10 +312,11 @@ function CheckoutPage() {
                   />
                 </Field>
               </div>
+
               <div className="md:col-span-2 rounded-xl bg-primary-soft p-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    {outstandingAfter > 0 ? "Due" : "Status"}
+                    {outstandingAfter > 0 ? "বাকি থাকবে (Due)" : "Status"}
                   </span>
                   <span className={`text-lg font-bold ${outstandingAfter > 0 ? "text-amber-600" : "text-emerald-600"}`}>
                     {outstandingAfter > 0 ? `৳${outstandingAfter.toLocaleString()}` : "Fully Paid ✓"}
@@ -332,56 +324,33 @@ function CheckoutPage() {
                 </div>
               </div>
             </div>
+
             <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
               <button onClick={() => setActive(null)} className={buttonGhost}>Cancel</button>
               <button
-               onClick={() => {
-  const finalDue = Math.max(0, totalDue - paidNow);
-
-  saveCustomerHistory({
-    ...active,
-    remaining: paidNow,
-    due: finalDue,
-    actualNights,
-    paymentMethod,
-    checkoutNotes,
-    checkoutDate,
-    checkoutTime,
-  });
-
-  removeActiveStay(active.id);
-
-  updateRoomStatus(active.room, "Available");
-
-  notifyCheckOut(active.customer, active.room, finalDue);
-
-  refreshList();
-
-  setCompletedInvoice({
-    invoiceNo: `INV-${active.id}`,
-    room: active.room,
-    customer: active.customer,
-    phone: active.phone,
-    nid: active.nid,
-    address: active.address,
-    checkIn: active.checkIn,
-    checkoutDate,
-    checkoutTime,
-    nights: actualNights,
-    rent: active.rent,
-    stayTotal,
-    previousDue: active.previousDue || 0,
-    advance: active.advance,
-    deposits: activeDepositsTotal,
-    paidNow,
-    paymentMethod,
-    totalDue,
-    finalDue,
-    notes: checkoutNotes || undefined,
-  });
-
-  setActive(null);
-}}
+                onClick={() => {
+                  const finalDue = Math.max(0, totalDue - paidNow);
+                  saveCustomerHistory({
+                    ...active,
+                    remaining: paidNow,
+                    due: finalDue,
+                    actualNights,
+                    paymentMethod,
+                    checkoutNotes,
+                    checkoutDate,
+                    checkoutTime,
+                  });
+                  removeActiveStay(active.id);
+                  updateRoomStatus(active.room, "Available");
+                  notifyCheckOut(active.customer, active.room, finalDue);
+                  refreshList();
+                  setActive(null);
+                  alert(
+                    finalDue > 0
+                      ? `Guest checked out. ৳${finalDue.toLocaleString()} বকেয়া থাকলো, পরের বার Booking-এ দেখাবে।`
+                      : "Guest checked out successfully. Fully paid."
+                  );
+                }}
                 className={buttonPrimary}
               >
                 Complete Checkout
@@ -394,226 +363,81 @@ function CheckoutPage() {
       {depositTarget && (() => {
         const live = list.find((s) => s.id === depositTarget.id) || depositTarget;
         const history = [...(live.deposits || [])].sort((a, b) => (a.date < b.date ? 1 : -1));
-
         return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <h3 className="text-base font-bold text-foreground">Add Deposit — Room {live.room}</h3>
-              <button
-                onClick={() => setDepositTarget(null)}
-                className="rounded-md p-1 text-muted-foreground hover:bg-muted"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="space-y-3 p-6">
-              <p className="text-sm text-muted-foreground">
-                {live.customer} · এখন পর্যন্ত জমা: ৳
-                {(live.advance + depositsTotalOf(live)).toLocaleString()}
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Date">
-                  <input
-                    type="date"
-                    className={inputClass}
-                    value={depositDate}
-                    onChange={(e) => setDepositDate(e.target.value)}
-                  />
-                </Field>
-                <Field label="Deposit Amount (৳)">
-                  <input
-                    type="number"
-                    className={inputClass}
-                    placeholder="0"
-                    value={depositAmount}
-                    onChange={(e) => setDepositAmount(e.target.value)}
-                  />
-                </Field>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+            <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
+              <div className="flex items-center justify-between border-b border-border px-6 py-4">
+                <h3 className="text-base font-bold text-foreground">Add Deposit — Room {live.room}</h3>
+                <button
+                  onClick={() => setDepositTarget(null)}
+                  className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-
-              {history.length > 0 && (
-                <div>
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Deposit History
-                  </p>
-                  <div className="max-h-40 overflow-y-auto rounded-lg border border-border">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                        <tr>
-                          <th className="px-3 py-1.5">Date</th>
-                          <th className="px-3 py-1.5 text-right">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {history.map((d, i) => (
-                          <tr key={i} className="border-t border-border">
-                            <td className="px-3 py-1.5 text-muted-foreground">{d.date}</td>
-                            <td className="px-3 py-1.5 text-right font-medium text-foreground">৳{d.amount.toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+              <div className="space-y-3 p-6">
+                <p className="text-sm text-muted-foreground">
+                  {live.customer} · এখন পর্যন্ত জমা: ৳
+                  {(live.advance + depositsTotalOf(live)).toLocaleString()}
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Date">
+                    <input
+                      type="date"
+                      className={inputClass}
+                      value={depositDate}
+                      onChange={(e) => setDepositDate(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Deposit Amount (৳)">
+                    <input
+                      type="number"
+                      className={inputClass}
+                      placeholder="0"
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(e.target.value)}
+                    />
+                  </Field>
                 </div>
-              )}
-            </div>
-            <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
-              <button onClick={() => setDepositTarget(null)} className={buttonGhost}>Cancel</button>
-              <button
-                onClick={handleSaveDeposit}
-                className="rounded-lg bg-primary px-5 py-2 font-semibold text-primary-foreground transition hover:opacity-90"
-              >
-                Save Deposit
-              </button>
+                {history.length > 0 && (
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Deposit History
+                    </p>
+                    <div className="max-h-40 overflow-y-auto rounded-lg border border-border">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                          <tr>
+                            <th className="px-3 py-1.5">Date</th>
+                            <th className="px-3 py-1.5 text-right">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {history.map((d, i) => (
+                            <tr key={i} className="border-t border-border">
+                              <td className="px-3 py-1.5 text-muted-foreground">{d.date}</td>
+                              <td className="px-3 py-1.5 text-right font-medium text-foreground">৳{d.amount.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+                <button onClick={() => setDepositTarget(null)} className={buttonGhost}>Cancel</button>
+                <button
+                  onClick={handleSaveDeposit}
+                  className="rounded-lg bg-primary px-5 py-2 font-semibold text-primary-foreground transition hover:opacity-90"
+                >
+                  Save Deposit
+                </button>
+              </div>
             </div>
           </div>
-        </div>
         );
       })()}
-
-      {completedInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-center shadow-2xl">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
-              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
-            </div>
-            <h3 className="mt-3 text-base font-bold text-foreground">Checkout Complete</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {completedInvoice.customer} · Room {completedInvoice.room}
-            </p>
-            <p className="mt-2 text-sm">
-              {completedInvoice.finalDue > 0 ? (
-                <span className="font-bold text-amber-600">৳{completedInvoice.finalDue.toLocaleString()} বকেয়া থাকলো</span>
-              ) : (
-                <span className="font-bold text-emerald-600">Fully Paid ✓</span>
-              )}
-            </p>
-            <p className="mt-3 text-xs text-muted-foreground">Invoice Print করতে চান?</p>
-            <div className="mt-4 flex justify-center gap-2">
-              <button onClick={() => setCompletedInvoice(null)} className={buttonGhost}>Close</button>
-              <button onClick={() => window.print()} className={buttonPrimary}>
-                <Printer className="h-4 w-4" /> Print Invoice
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-
-    {completedInvoice && (() => {
-      const profile = getHotelProfile();
-      const phones = profile.contactPhones.filter(Boolean);
-      const inv = completedInvoice;
-      const totalPaid = inv.advance + inv.deposits + inv.paidNow;
-
-      return (
-        <div className="hidden print:block">
-          <style>{`@media print { @page { size: A4; margin: 16mm; } }`}</style>
-          <div className="mx-auto max-w-[720px] p-4 text-black">
-            <div className="mb-6 flex items-start justify-between border-b-2 border-black pb-4">
-              <div>
-                <h1 className="text-xl font-bold">{profile.hotelName}</h1>
-                {profile.address && <p className="mt-1 max-w-[280px] text-xs text-gray-700">{profile.address}</p>}
-                {phones.length > 0 && <p className="text-xs text-gray-700">{phones.join("  ·  ")}</p>}
-              </div>
-              <div className="text-right">
-                <h2 className="text-2xl font-bold uppercase tracking-widest">Invoice</h2>
-                <p className="mt-1 text-xs text-gray-700">Invoice No: {inv.invoiceNo}</p>
-                <p className="text-xs text-gray-700">Date: {inv.checkoutDate} {inv.checkoutTime}</p>
-              </div>
-            </div>
-
-            <div className="mb-5 grid grid-cols-2 gap-6">
-              <div>
-                <h3 className="mb-1 text-[11px] font-bold uppercase text-gray-500">Bill To</h3>
-                <p className="text-sm font-semibold">{inv.customer}</p>
-                <p className="text-xs text-gray-700">{inv.phone}</p>
-                {inv.nid && <p className="text-xs text-gray-700">NID: {inv.nid}</p>}
-                <p className="text-xs text-gray-700">{inv.address}</p>
-              </div>
-              <div className="text-right">
-                <h3 className="mb-1 text-[11px] font-bold uppercase text-gray-500">Stay Details</h3>
-                <p className="text-xs text-gray-700">Room: {inv.room}</p>
-                <p className="text-xs text-gray-700">Check In: {inv.checkIn}</p>
-                <p className="text-xs text-gray-700">Check Out: {inv.checkoutDate} {inv.checkoutTime}</p>
-                <p className="text-xs text-gray-700">{inv.nights} night(s)</p>
-              </div>
-            </div>
-
-            <table className="mb-5 w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b-2 border-black text-left">
-                  <th className="py-1.5">Description</th>
-                  <th className="py-1.5 text-right">Amount (৳)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-gray-300">
-                  <td className="py-1.5">Room Charge ({inv.nights} night(s) × ৳{inv.rent.toLocaleString()})</td>
-                  <td className="py-1.5 text-right">{inv.stayTotal.toLocaleString()}</td>
-                </tr>
-                {inv.previousDue > 0 && (
-                  <tr className="border-b border-gray-300">
-                    <td className="py-1.5">Previous Due (Carried)</td>
-                    <td className="py-1.5 text-right">{inv.previousDue.toLocaleString()}</td>
-                  </tr>
-                )}
-                <tr className="border-b border-gray-300">
-                  <td className="py-1.5">Advance Paid</td>
-                  <td className="py-1.5 text-right">− {inv.advance.toLocaleString()}</td>
-                </tr>
-                {inv.deposits > 0 && (
-                  <tr className="border-b border-gray-300">
-                    <td className="py-1.5">Deposits During Stay</td>
-                    <td className="py-1.5 text-right">− {inv.deposits.toLocaleString()}</td>
-                  </tr>
-                )}
-                <tr className="border-b-2 border-black font-semibold">
-                  <td className="py-1.5">Total Due at Checkout</td>
-                  <td className="py-1.5 text-right">{Math.max(0, inv.totalDue).toLocaleString()}</td>
-                </tr>
-                <tr className="border-b border-gray-300">
-                  <td className="py-1.5">Paid Now ({inv.paymentMethod})</td>
-                  <td className="py-1.5 text-right">− {inv.paidNow.toLocaleString()}</td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr className="text-base font-bold">
-                  <td className="py-2">{inv.finalDue > 0 ? "Balance Due" : "Status"}</td>
-                  <td className="py-2 text-right">
-                    {inv.finalDue > 0 ? `৳${inv.finalDue.toLocaleString()}` : "Fully Paid ✓"}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-
-            <div className="mb-8 flex justify-between text-xs text-gray-600">
-              <span>Total Paid: ৳{totalPaid.toLocaleString()}</span>
-              <span>Payment Method: {inv.paymentMethod}</span>
-            </div>
-
-            {inv.notes && (
-              <div className="mb-8">
-                <h3 className="mb-1 text-[11px] font-bold uppercase text-gray-500">Notes</h3>
-                <p className="text-xs">{inv.notes}</p>
-              </div>
-            )}
-
-            <div className="mt-16 flex justify-between text-xs">
-              <div className="text-center">
-                <div className="w-40 border-t border-black pt-1">Guest Signature</div>
-              </div>
-              <div className="text-center">
-                <div className="w-40 border-t border-black pt-1">Authorized Signature</div>
-              </div>
-            </div>
-
-            <p className="mt-8 text-center text-[11px] text-gray-500">Thank you for staying with us.</p>
-          </div>
-        </div>
-      );
-    })()}
-    </>
   );
 }
