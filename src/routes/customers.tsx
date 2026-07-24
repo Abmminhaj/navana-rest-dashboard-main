@@ -112,7 +112,8 @@ function CustomersPage() {
 
  const filtered = useMemo(() => {
   return profiles.filter((p) => {
-    const textMatch = `${p.name} ${p.phone} ${p.nid} ${p.address}`
+    const bookingIds = p.records.map((r) => r.bookingId || "").join(" ");
+    const textMatch = `${p.name} ${p.phone} ${p.nid} ${p.address} ${bookingIds}`
       .toLowerCase()
       .includes(query.toLowerCase());
 
@@ -136,16 +137,25 @@ function CustomersPage() {
 }, [profiles, query, fromDate, toDate]);
 
 function exportExcel() {
-  const rows = filtered.map((p) => ({
-    Name: p.name,
-    Phone: p.phone,
-    NID: p.nid,
-    Address: p.address,
-    LastVisit: p.lastVisit,
-    TotalStay: p.totalStays,
-    TotalSpent: p.totalSpent,
-    OutstandingDue: p.outstandingDue,
-  }));
+  const rows = filtered.flatMap((p) =>
+    p.records.map((r) => ({
+      BookingID: r.bookingId || "",
+      Name: p.name,
+      FatherName: p.fatherName || "",
+      Phone: p.phone,
+      NID: p.nid,
+      Address: p.address,
+      CustomerType: r.guestType || "",
+      Room: r.room,
+      CheckIn: r.checkIn,
+      CheckoutDate: r.checkoutDate || "",
+      Advance: r.advance || 0,
+      Deposits: depositsTotalOf(r),
+      PaidAtCheckout: r.remaining || 0,
+      Due: r.due || 0,
+      PaymentMethod: r.paymentMethod || "",
+    }))
+  );
 
   const header = Object.keys(rows[0] || {});
   const csv = [
@@ -186,7 +196,7 @@ function exportExcel() {
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 className={inputClass + " pl-9"}
-                placeholder="Search by name, phone, NID or address…"
+                placeholder="Search by name, phone, NID, address or booking ID…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -237,14 +247,18 @@ function exportExcel() {
                   <tr
                     key={p.key}
                     id={`customer-row-${p.key}`}
-                    className={`cursor-pointer border-t border-border hover:bg-muted/30 ${
+                    className={`border-t border-border hover:bg-muted/30 ${
                       highlight === p.key ? "bg-primary-soft/60 ring-2 ring-inset ring-primary/40" : ""
                     }`}
-                    onClick={() => setSelected(p)}
                   >
                     <td className="px-4 py-3 text-muted-foreground">{p.lastVisit || "—"}</td>
                     <td className="px-4 py-3">
-                      <span className="font-semibold text-primary hover:underline">{p.name || "—"}</span>
+                      <span
+                        onClick={() => setSelected(p)}
+                        className="cursor-pointer font-semibold text-primary hover:underline"
+                      >
+                        {p.name || "—"}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-foreground">{p.phone || "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">{p.nid || "—"}</td>
@@ -347,7 +361,9 @@ function exportExcel() {
                     <table className="w-full text-sm">
                       <thead className="bg-muted/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
                         <tr>
+                          <th className="px-3 py-2">Booking ID</th>
                           <th className="px-3 py-2">Room</th>
+                          <th className="px-3 py-2">Guest Type</th>
                           <th className="px-3 py-2">Check In</th>
                           <th className="px-3 py-2">Expected Check Out</th>
                           <th className="px-3 py-2">Checkout Date</th>
@@ -356,7 +372,9 @@ function exportExcel() {
                       <tbody>
                         {selected.records.map((r, i) => (
                           <tr key={i} className="border-t border-border">
+                            <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{r.bookingId || "—"}</td>
                             <td className="px-3 py-2 font-semibold text-foreground">{r.room}</td>
+                            <td className="px-3 py-2 text-muted-foreground">{r.guestType || "—"}</td>
                             <td className="px-3 py-2 text-muted-foreground">{r.checkIn}</td>
                             <td className="px-3 py-2 text-muted-foreground">{r.expectedCheckOut}</td>
                             <td className="px-3 py-2 text-muted-foreground">{r.checkoutDate}</td>
@@ -473,6 +491,7 @@ function exportExcel() {
                 <table className="w-full border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-gray-400 text-left">
+                      <th className="py-1 pr-6">Booking ID</th>
                       <th className="py-1 pr-6">Room</th>
                       <th className="py-1 pr-6">Check In</th>
                       <th className="py-1 pr-6">Expected Check Out</th>
@@ -482,6 +501,7 @@ function exportExcel() {
                   <tbody>
                     {selected.records.map((r, i) => (
                       <tr key={i} className="border-b border-gray-200">
+                        <td className="py-1 pr-6">{r.bookingId || "—"}</td>
                         <td className="py-1 pr-6">{r.room}</td>
                         <td className="py-1 pr-6">{r.checkIn}</td>
                         <td className="py-1 pr-6">{r.expectedCheckOut}</td>

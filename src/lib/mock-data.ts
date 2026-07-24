@@ -46,6 +46,8 @@ export const rooms: Room[] = [
 
 export interface ActiveStay {
   id: string;
+  bookingId?: string;
+  guestType?: string;
   room: string;
   customer: string;
   fatherName?: string;

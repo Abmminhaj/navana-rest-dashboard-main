@@ -226,6 +226,8 @@ function BookingPage() {
 
   const activeStay = {
     id: Date.now().toString(),
+    bookingId,
+    guestType,
     room: selectedRoom,
     customer: customerName,
     fatherName,

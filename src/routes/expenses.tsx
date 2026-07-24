@@ -173,19 +173,51 @@ function ExpensesPage() {
 
             <Field label="Category">
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <select className={selectClass} value={category} onChange={(e) => setCategory(e.target.value)}>
-                    {categories.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
+                <div className={inputClass + " flex items-center"}>
+                  {category ? (
+                    <span className="font-semibold text-foreground">{category}</span>
+                  ) : (
+                    <span className="text-muted-foreground">নিচে থেকে একটা Category বেছে নিন</span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {categories.map((c) => (
+                    <span
+                      key={c}
+                      className={`inline-flex items-center overflow-hidden rounded-full text-xs font-semibold transition ${
+                        category === c
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-foreground"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setCategory(c)}
+                        className={`px-3 py-1.5 ${category === c ? "" : "hover:bg-muted/70"}`}
+                      >
+                        {c}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCategory(c)}
+                        title={`Remove ${c}`}
+                        className={`border-l px-2 py-1.5 ${
+                          category === c
+                            ? "border-primary-foreground/30 text-primary-foreground/70 hover:bg-red-500 hover:text-white"
+                            : "border-border text-muted-foreground hover:bg-red-500 hover:text-white"
+                        }`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
                   <button
                     type="button"
-                    className={buttonGhost + " shrink-0 px-3"}
                     onClick={() => setShowAddCategory((v) => !v)}
-                    title="Add new category"
+                    className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-primary"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-3.5 w-3.5" /> New
                   </button>
                 </div>
 
@@ -213,25 +245,6 @@ function ExpensesPage() {
                     {categoryError && <p className="text-xs font-medium text-red-500">{categoryError}</p>}
                   </div>
                 )}
-
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {categories.map((c) => (
-                    <span
-                      key={c}
-                      className="inline-flex items-center gap-1 rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-semibold text-primary"
-                    >
-                      {c}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCategory(c)}
-                        className="ml-0.5 text-primary/60 hover:text-red-500"
-                        title={`Remove ${c}`}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
               </div>
             </Field>
 

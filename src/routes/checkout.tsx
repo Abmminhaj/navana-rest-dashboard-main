@@ -324,7 +324,7 @@ function CheckoutPage() {
               <div className="md:col-span-2 rounded-xl bg-primary-soft p-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    {outstandingAfter > 0 ? "বাকি থাকবে (Due)" : "Status"}
+                    {outstandingAfter > 0 ? "Due" : "Status"}
                   </span>
                   <span className={`text-lg font-bold ${outstandingAfter > 0 ? "text-amber-600" : "text-emerald-600"}`}>
                     {outstandingAfter > 0 ? `৳${outstandingAfter.toLocaleString()}` : "Fully Paid ✓"}
