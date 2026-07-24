@@ -52,19 +52,17 @@ function RoomsPage() {
   const [filter, setFilter] = useState<RoomStatus | "All">("All");
   const [rooms, setRooms] = useState<Room[]>([]);
 
-useEffect(() => {
-  const loadRooms = () => {
-    setRooms(getRooms());
-  };
+  useEffect(() => {
+    const loadRooms = () => {
+      setRooms(getRooms());
+    };
+    loadRooms();
+    window.addEventListener("roomsUpdated", loadRooms);
+    return () => {
+      window.removeEventListener("roomsUpdated", loadRooms);
+    };
+  }, []);
 
-  loadRooms();
-
-  window.addEventListener("roomsUpdated", loadRooms);
-
-  return () => {
-    window.removeEventListener("roomsUpdated", loadRooms);
-  };
-}, []);
   const [selected, setSelected] = useState<typeof rooms[number] | null>(null);
   const [editStatus, setEditStatus] = useState<RoomStatus>("Available");
   const [editType, setEditType] = useState("");
@@ -107,74 +105,83 @@ useEffect(() => {
   }
 
   const handleSaveRoom = () => {
-  if (!selected) return;
+    if (!selected) return;
 
-  // Rule 1: Occupied room WITH a real booking can't change manually — must go through Checkout
-  if (selected.status === "Occupied" && hasRealBooking && editStatus !== "Occupied") {
-    setOverrideError("এই Room-এ একটা Real Booking আছে। Checkout Page থেকে Checkout না করা পর্যন্ত Status পরিবর্তন করা যাবে না।");
-    return;
-  }
-
-  // Rule 1b: Occupied room WITHOUT a real booking (manual override) — releasing it still needs Admin Password
-  if (selected.status === "Occupied" && !hasRealBooking && editStatus !== "Occupied") {
-    if (!verifyAdminPassword(overridePassword)) {
-      setOverrideError("এই Room আগে Manual ভাবে Occupied করা হয়েছিল (কোনো Real Booking নেই)। Release করতে Admin Password দাও।");
+    // Rule 1: Occupied room WITH a real booking can't change manually — must go through Checkout
+    if (selected.status === "Occupied" && hasRealBooking && editStatus !== "Occupied") {
+      setOverrideError("এই Room-এ একটা Real Booking আছে। Checkout Page থেকে Checkout না করা পর্যন্ত Status পরিবর্তন করা যাবে না।");
       return;
     }
-  }
 
-  // Rule 2: Non-Occupied → Occupied requires a Special Note + Admin Password
-  if (selected.status !== "Occupied" && editStatus === "Occupied") {
-    if (!overrideNote.trim()) {
-      setOverrideError("Special Note লিখতে হবে।");
-      return;
+    // Rule 1b: Occupied room WITHOUT a real booking (manual override) — releasing it still needs Admin Password
+    if (selected.status === "Occupied" && !hasRealBooking && editStatus !== "Occupied") {
+      if (!verifyAdminPassword(overridePassword)) {
+        setOverrideError("এই Room আগে Manual ভাবে Occupied করা হয়েছিল (কোনো Real Booking নেই)। Release করতে Admin Password দাও।");
+        return;
+      }
     }
-    if (!verifyAdminPassword(overridePassword)) {
-      setOverrideError("Admin Password ভুল হয়েছে।");
-      return;
+
+    // Rule 2: Non-Occupied → Occupied requires a Special Note + Admin Password
+    if (selected.status !== "Occupied" && editStatus === "Occupied") {
+      if (!overrideNote.trim()) {
+        setOverrideError("Special Note লিখতে হবে।");
+        return;
+      }
+      if (!verifyAdminPassword(overridePassword)) {
+        setOverrideError("Admin Password ভুল হয়েছে।");
+        return;
+      }
     }
-  }
 
-  setOverrideError("");
+    setOverrideError("");
 
-  updateRoom(selected.number, {
-    status: editStatus,
-    type: editType.trim() || "Standard",
-    rent: Number(editRent) || 0,
-    amenities: editAmenities,
-    notes:
-      selected.status !== "Occupied" && editStatus === "Occupied"
-        ? `${note ? note + " | " : ""}Manual Occupied Override: ${overrideNote.trim()}`
-        : note,
-  });
+    updateRoom(selected.number, {
+      status: editStatus,
+      type: editType.trim() || "Standard",
+      rent: Number(editRent) || 0,
+      amenities: editAmenities,
+      notes:
+        selected.status !== "Occupied" && editStatus === "Occupied"
+          ? `${note ? note + " | " : ""}Manual Occupied Override: ${overrideNote.trim()}`
+          : note,
+    });
 
-  setSelected(null);
-};
+    setSelected(null);
+  };
 
   function handleDeleteRoom() {
     if (!selected) return;
-
     if (selected.status === "Occupied") {
       alert("এই Room-এ এখন Guest আছে। আগে Checkout করাও, তারপর Room Delete করতে পারবে।");
       return;
     }
-
     const ok = window.confirm(
       `Room ${selected.number} মুছে ফেলতে চাও? এই কাজ Undo করা যাবে না।`
     );
     if (!ok) return;
-
     deleteRoom(selected.number);
     setSelected(null);
   }
 
-  function handleResetRooms() {
-    const ok = window.confirm(
-      "এটি বর্তমান সব Room-এর Status/Type/Amenities মুছে দিয়ে আসল ২৫টা Room (101-109, 201-216) দিয়ে নতুন করে শুরু করবে। আপনি কি নিশ্চিত?"
-    );
-    if (!ok) return;
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetError, setResetError] = useState("");
 
+  function openResetModal() {
+    setResetPassword("");
+    setResetError("");
+    setShowResetModal(true);
+  }
+
+  function handleConfirmReset() {
+    if (!verifyAdminPassword(resetPassword)) {
+      setResetError("Admin Password ভুল হয়েছে।");
+      return;
+    }
     resetRoomsToDefault();
+    setShowResetModal(false);
+    setResetPassword("");
+    setResetError("");
   }
 
   const [showAddRoom, setShowAddRoom] = useState(false);
@@ -191,7 +198,6 @@ useEffect(() => {
       setAddError("Room Number দিতে হবে");
       return;
     }
-
     try {
       addRoom({
         number,
@@ -201,7 +207,6 @@ useEffect(() => {
         rent: Number(newRent) || 0,
         amenities: [],
       });
-
       setShowAddRoom(false);
       setNewNumber("");
       setNewFloor(1);
@@ -223,6 +228,7 @@ useEffect(() => {
   };
 
   const visible = filter === "All" ? rooms : rooms.filter((r) => r.status === filter);
+
   const byFloor = visible.reduce<Record<number, typeof rooms>>((acc, r) => {
     (acc[r.floor] ||= []).push(r);
     return acc;
@@ -235,7 +241,7 @@ useEffect(() => {
         description="Real-time inventory across all floors."
         actions={
           <div className="flex items-center gap-2">
-            <button onClick={handleResetRooms} className={buttonGhost}>
+            <button onClick={openResetModal} className={buttonGhost}>
               <RotateCcw className="h-4 w-4" /> Reset to Default 25 Rooms
             </button>
             <button
@@ -335,6 +341,7 @@ useEffect(() => {
                 <X className="h-4 w-4" />
               </button>
             </div>
+
             <div className="space-y-4 p-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -376,99 +383,103 @@ useEffect(() => {
                   />
                 </div>
               </div>
+
               <div className="space-y-2">
-  <label className="text-sm font-medium text-foreground">
-    Room Status
-  </label>
+                <label className="text-sm font-medium text-foreground">
+                  Room Status
+                </label>
+                {selected.status === "Occupied" && hasRealBooking ? (
+                  <>
+                    <input
+                      value="Occupied"
+                      readOnly
+                      className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-muted-foreground"
+                    />
+                    <p className="text-xs text-amber-600">
+                      এই Room-এ Guest Check-in আছে। Status পরিবর্তন করতে হলে Checkout Page থেকে Checkout করাও।
+                    </p>
+                  </>
+                ) : (
+                  <select
+                    value={editStatus}
+                    onChange={(e) => {
+                      setEditStatus(e.target.value as RoomStatus);
+                      setOverrideError("");
+                    }}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2"
+                  >
+                    <option value="Available">Available</option>
+                    <option value="Occupied">Occupied</option>
+                    <option value="Reserved">Reserved</option>
+                    <option value="Cleaning">Cleaning</option>
+                    <option value="Maintenance">Maintenance</option>
+                  </select>
+                )}
+              </div>
 
-  {selected.status === "Occupied" && hasRealBooking ? (
-    <>
-      <input
-        value="Occupied"
-        readOnly
-        className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-muted-foreground"
-      />
-      <p className="text-xs text-amber-600">
-        এই Room-এ Guest Check-in আছে। Status পরিবর্তন করতে হলে Checkout Page থেকে Checkout করাও।
-      </p>
-    </>
-  ) : (
-    <select
-      value={editStatus}
-      onChange={(e) => {
-        setEditStatus(e.target.value as RoomStatus);
-        setOverrideError("");
-      }}
-      className="w-full rounded-lg border border-border bg-background px-3 py-2"
-    >
-      <option value="Available">Available</option>
-      <option value="Occupied">Occupied</option>
-      <option value="Reserved">Reserved</option>
-      <option value="Cleaning">Cleaning</option>
-      <option value="Maintenance">Maintenance</option>
-    </select>
-  )}
-</div>
-{selected.status === "Occupied" && !hasRealBooking && editStatus !== "Occupied" && (
-  <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
-    <p className="text-xs font-semibold text-amber-800">
-      ⚠️ এই Room আগে Manual ভাবে Occupied করা হয়েছিল, কোনো Real Booking নেই। Release করতে Admin Password দাও:
-    </p>
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-foreground">Admin Password</label>
-      <input
-        type="password"
-        value={overridePassword}
-        onChange={(e) => setOverridePassword(e.target.value)}
-        placeholder="Admin Password দাও"
-        className="w-full rounded-lg border border-border bg-background px-3 py-2"
-      />
-    </div>
-  </div>
-)}
-{selected.status !== "Occupied" && editStatus === "Occupied" && (
-  <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
-    <p className="text-xs font-semibold text-amber-800">
-      ⚠️ সরাসরি Available থেকে Occupied করছো — সাধারণত এটা Booking Page দিয়ে হওয়া উচিত। যদি নিশ্চিত থাকো, নিচে দাও:
-    </p>
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-foreground">Special Note (কেন Manual করা হলো)</label>
-      <textarea
-        value={overrideNote}
-        onChange={(e) => setOverrideNote(e.target.value)}
-        rows={2}
-        placeholder="যেমন: Walk-in guest, system-এ ঝামেলা হচ্ছিল ইত্যাদি"
-        className="w-full rounded-lg border border-border bg-background px-3 py-2"
-      />
-    </div>
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-foreground">Admin Password</label>
-      <input
-        type="password"
-        value={overridePassword}
-        onChange={(e) => setOverridePassword(e.target.value)}
-        placeholder="Admin Password দাও"
-        className="w-full rounded-lg border border-border bg-background px-3 py-2"
-      />
-    </div>
-  </div>
-)}
-{overrideError && (
-  <p className="text-xs font-medium text-red-600">{overrideError}</p>
-)}
-<div className="space-y-2">
-  <label className="text-sm font-medium text-foreground">
-    Notes
-  </label>
+              {selected.status === "Occupied" && !hasRealBooking && editStatus !== "Occupied" && (
+                <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+                  <p className="text-xs font-semibold text-amber-800">
+                    ⚠️ এই Room আগে Manual ভাবে Occupied করা হয়েছিল, কোনো Real Booking নেই। Release করতে Admin Password দাও:
+                  </p>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Admin Password</label>
+                    <input
+                      type="password"
+                      value={overridePassword}
+                      onChange={(e) => setOverridePassword(e.target.value)}
+                      placeholder="Admin Password দাও"
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2"
+                    />
+                  </div>
+                </div>
+              )}
 
-  <textarea
-    value={note}
-    onChange={(e) => setNote(e.target.value)}
-    rows={3}
-    placeholder="Write any note..."
-    className="w-full rounded-lg border border-border bg-background px-3 py-2"
-  />
-</div>
+              {selected.status !== "Occupied" && editStatus === "Occupied" && (
+                <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+                  <p className="text-xs font-semibold text-amber-800">
+                    ⚠️ সরাসরি Available থেকে Occupied করছো — সাধারণত এটা Booking Page দিয়ে হওয়া উচিত। যদি নিশ্চিত থাকো, নিচে দাও:
+                  </p>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Special Note (কেন Manual করা হলো)</label>
+                    <textarea
+                      value={overrideNote}
+                      onChange={(e) => setOverrideNote(e.target.value)}
+                      rows={2}
+                      placeholder="যেমন: Walk-in guest, system-এ ঝামেলা হচ্ছিল ইত্যাদি"
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Admin Password</label>
+                    <input
+                      type="password"
+                      value={overridePassword}
+                      onChange={(e) => setOverridePassword(e.target.value)}
+                      placeholder="Admin Password দাও"
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {overrideError && (
+                <p className="text-xs font-medium text-red-600">{overrideError}</p>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Notes
+                </label>
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={3}
+                  placeholder="Write any note..."
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2"
+                />
+              </div>
+
               <div>
                 <label className="text-sm font-medium text-foreground">Amenities / Facilities</label>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -511,32 +522,69 @@ useEffect(() => {
                 </div>
               </div>
             </div>
+
             <div className="flex items-center justify-between border-t border-border px-6 py-4">
+              <button
+                onClick={handleDeleteRoom}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4" /> Delete Room
+              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSelected(null)}
+                  className={buttonGhost}
+                >
+                  Close
+                </button>
+                <button
+                  onClick={handleSaveRoom}
+                  className="rounded-lg bg-primary px-5 py-2 font-semibold text-primary-foreground transition hover:opacity-90"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-  <button
-    onClick={handleDeleteRoom}
-    className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700"
-  >
-    <Trash2 className="h-4 w-4" /> Delete Room
-  </button>
-
-  <div className="flex gap-2">
-    <button
-      onClick={() => setSelected(null)}
-      className={buttonGhost}
-    >
-      Close
-    </button>
-
-    <button
-      onClick={handleSaveRoom}
-      className="rounded-lg bg-primary px-5 py-2 font-semibold text-primary-foreground transition hover:opacity-90"
-    >
-      Save Changes
-    </button>
-  </div>
-
-</div>
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <h3 className="text-base font-bold text-foreground">Reset to Default 25 Rooms</h3>
+              <button onClick={() => setShowResetModal(false)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-3 p-6">
+              <p className="text-xs text-muted-foreground">
+                এটি বর্তমান সব Room-এর Status/Type/Amenities মুছে দিয়ে আসল ২৫টা Room (101-109, 201-216) দিয়ে নতুন করে শুরু করবে। এই কাজ শুধুমাত্র Admin করতে পারবে।
+              </p>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Admin Password</label>
+                <input
+                  type="password"
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleConfirmReset()}
+                  placeholder="Admin Password দাও"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2"
+                  autoFocus
+                />
+              </div>
+              {resetError && <p className="text-xs font-medium text-red-600">{resetError}</p>}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+              <button onClick={() => setShowResetModal(false)} className={buttonGhost}>Cancel</button>
+              <button
+                onClick={handleConfirmReset}
+                className="rounded-lg bg-destructive px-5 py-2 font-semibold text-destructive-foreground transition hover:opacity-90"
+              >
+                Confirm Reset
+              </button>
+            </div>
           </div>
         </div>
       )}

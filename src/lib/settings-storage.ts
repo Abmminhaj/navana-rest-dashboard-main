@@ -13,7 +13,7 @@ export interface HotelProfile {
 const DEFAULT_PROFILE: HotelProfile = {
   hotelName: "Navana Rest House",
   contactPhone: "+880 1711-000000",
-  address: "House 14, Road 7, Banani, Dhaka",
+  address: "Kazi Roman Complex, Kalitola, Nilphamari Sadar, Nilphamari",
   currency: "BDT (৳)",
   timezone: "Asia/Dhaka (GMT+6)",
 };
