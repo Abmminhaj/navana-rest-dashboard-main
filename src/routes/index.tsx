@@ -66,10 +66,6 @@ function bookingMonthKey(bookingId: string | undefined) {
   return match ? `${match[1]}-${match[2]}` : null;
 }
 
-// Builds the last 6 months (oldest first, current month last) of real
-// Income / Expense / Profit from bookings + checkout history + expenses.
-// Income here mirrors the "Today's Income" logic: advance collected at
-// booking time + remaining collected at checkout time, both real cash flow.
 function useMonthlyFinancials(bookings: any[], history: CustomerHistoryRecord[], expenses: ReturnType<typeof getExpenses>) {
   return useMemo(() => {
     const months: { key: string; month: string }[] = [];
@@ -112,8 +108,8 @@ function Dashboard() {
   const [adminName, setAdminName] = useState("Arif");
 
   useEffect(() => {
-    function loadAll() {
-      setRooms(getRooms());
+    async function loadAll() {
+      setRooms(await getRooms()); // now async — comes from Supabase
       setActiveStays(getActiveStays());
       setBookings(getBookings());
       setHistory(getCustomerHistory());
@@ -154,6 +150,7 @@ function Dashboard() {
   const todaysExpense = expenses
     .filter((e) => e.date === today)
     .reduce((sum, e) => sum + e.amount, 0);
+
   const todaysProfit = todaysIncome - todaysExpense;
 
   const monthlyFinancials = useMonthlyFinancials(bookings, history, expenses);

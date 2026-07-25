@@ -10,9 +10,6 @@ import { getActiveStays } from "@/lib/stay-storage";
 
 export const Route = createFileRoute("/rooms")({
   head: () => ({ meta: [{ title: "Rooms — Navana Rest House" }] }),
-  validateSearch: (search: Record<string, unknown>): { highlight?: string } => ({
-    highlight: typeof search.highlight === "string" ? search.highlight : undefined,
-  }),
   component: RoomsPage,
 });
 
@@ -52,13 +49,12 @@ const statusStyles: Record<
 };
 
 function RoomsPage() {
-  const { highlight } = Route.useSearch();
   const [filter, setFilter] = useState<RoomStatus | "All">("All");
   const [rooms, setRooms] = useState<Room[]>([]);
 
   useEffect(() => {
-    const loadRooms = () => {
-      setRooms(getRooms());
+    const loadRooms = async () => {
+      setRooms(await getRooms());
     };
     loadRooms();
     window.addEventListener("roomsUpdated", loadRooms);
@@ -95,16 +91,6 @@ function RoomsPage() {
     setHasRealBooking(getActiveStays().some((s: any) => s.room === r.number));
   }
 
-  useEffect(() => {
-    if (!highlight || rooms.length === 0) return;
-    const match = rooms.find((r) => r.number === highlight);
-    if (!match) return;
-    openRoom(match);
-    const card = document.getElementById(`room-card-${highlight}`);
-    card?.scrollIntoView({ behavior: "smooth", block: "center" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [highlight, rooms]);
-
   function addAmenity() {
     const trimmed = newAmenity.trim();
     if (!trimmed) return;
@@ -118,7 +104,7 @@ function RoomsPage() {
     setEditAmenities(editAmenities.filter((x) => x !== a));
   }
 
-  const handleSaveRoom = () => {
+  const handleSaveRoom = async () => {
     if (!selected) return;
 
     // Rule 1: Occupied room WITH a real booking can't change manually — must go through Checkout
@@ -149,7 +135,7 @@ function RoomsPage() {
 
     setOverrideError("");
 
-    updateRoom(selected.number, {
+    await updateRoom(selected.number, {
       status: editStatus,
       type: editType.trim() || "Standard",
       rent: Number(editRent) || 0,
@@ -163,7 +149,7 @@ function RoomsPage() {
     setSelected(null);
   };
 
-  function handleDeleteRoom() {
+  async function handleDeleteRoom() {
     if (!selected) return;
     if (selected.status === "Occupied") {
       alert("এই Room-এ এখন Guest আছে। আগে Checkout করাও, তারপর Room Delete করতে পারবে।");
@@ -173,7 +159,7 @@ function RoomsPage() {
       `Room ${selected.number} মুছে ফেলতে চাও? এই কাজ Undo করা যাবে না।`
     );
     if (!ok) return;
-    deleteRoom(selected.number);
+    await deleteRoom(selected.number);
     setSelected(null);
   }
 
@@ -187,12 +173,12 @@ function RoomsPage() {
     setShowResetModal(true);
   }
 
-  function handleConfirmReset() {
+  async function handleConfirmReset() {
     if (!verifyAdminPassword(resetPassword)) {
       setResetError("Admin Password ভুল হয়েছে।");
       return;
     }
-    resetRoomsToDefault();
+    await resetRoomsToDefault();
     setShowResetModal(false);
     setResetPassword("");
     setResetError("");
@@ -206,14 +192,14 @@ function RoomsPage() {
   const [newRent, setNewRent] = useState(2500);
   const [addError, setAddError] = useState("");
 
-  function handleAddRoom() {
+  async function handleAddRoom() {
     const number = newNumber.trim();
     if (!number) {
       setAddError("Room Number দিতে হবে");
       return;
     }
     try {
-      addRoom({
+      await addRoom({
         number,
         type: newType.trim() || "Standard",
         status: "Available",
@@ -312,11 +298,8 @@ function RoomsPage() {
                 return (
                   <button
                     key={r.number}
-                    id={`room-card-${r.number}`}
                     onClick={() => openRoom(r)}
-                    className={`group rounded-xl border p-4 text-left transition ${s.bg} ${
-                      highlight === r.number ? "ring-2 ring-primary ring-offset-2" : ""
-                    }`}
+                    className={`group rounded-xl border p-4 text-left transition ${s.bg}`}
                   >
                     <div className="flex items-start justify-between">
                       <div className={`text-2xl font-bold ${getRoomTypeColor(r.type)}`}>{r.number}</div>

@@ -328,7 +328,7 @@ function CheckoutPage() {
             <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
               <button onClick={() => setActive(null)} className={buttonGhost}>Cancel</button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   const finalDue = Math.max(0, totalDue - paidNow);
                   saveCustomerHistory({
                     ...active,
@@ -341,7 +341,7 @@ function CheckoutPage() {
                     checkoutTime,
                   });
                   removeActiveStay(active.id);
-                  updateRoomStatus(active.room, "Available");
+                  await updateRoomStatus(active.room, "Available");
                   notifyCheckOut(active.customer, active.room, finalDue);
                   refreshList();
                   setActive(null);

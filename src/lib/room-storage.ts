@@ -1,92 +1,101 @@
-import { rooms, type Room, type RoomStatus } from "./mock-data";
+import { supabase } from "./supabaseClient";
+import type { Room, RoomStatus } from "./mock-data";
 
-const STORAGE_KEY = "navana_rooms";
+const DEFAULT_ROOMS: Room[] = [
+  { number: "101", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "102", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "103", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "104", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "105", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "106", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "107", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "108", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "109", type: "Standard", status: "Available", floor: 1, rent: 2500, amenities: [] },
+  { number: "201", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "202", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "203", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "204", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "205", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "206", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "207", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "208", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "209", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "210", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "211", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "212", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "213", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "214", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "215", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+  { number: "216", type: "Standard", status: "Available", floor: 2, rent: 2500, amenities: [] },
+];
 
-export function getRooms(): Room[] {
-  const savedRooms = localStorage.getItem(STORAGE_KEY);
+function rowToRoom(row: any): Room {
+  return {
+    number: row.number,
+    type: row.type,
+    status: row.status,
+    floor: row.floor,
+    rent: Number(row.rent),
+    amenities: row.amenities || [],
+    notes: row.notes || undefined,
+  };
+}
 
-  if (savedRooms) {
-    return JSON.parse(savedRooms);
+export async function getRooms(): Promise<Room[]> {
+  const { data, error } = await supabase.from("rooms").select("*").order("number", { ascending: true });
+  if (error) {
+    console.error("getRooms failed:", error.message);
+    return [];
   }
-
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(rooms));
-
-  return [...rooms];
+  return (data || []).map(rowToRoom);
 }
 
-export function saveRooms(updatedRooms: Room[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedRooms));
+export async function occupyRoom(roomNumber: string) {
+  await updateRoomStatus(roomNumber, "Occupied");
 }
 
-export function occupyRoom(roomNumber: string) {
-  updateRoomStatus(roomNumber, "Occupied");
-}
-
-export function updateRoomStatus(
-  roomNumber: string,
-  status: RoomStatus
-)
- {
-  const allRooms = getRooms();
-
-  const updatedRooms = allRooms.map((room: Room) => {
-    if (room.number === roomNumber) {
-      return {
-        ...room,
-        status,
-      };
-    }
-
-    return room;
-  });
-
-  saveRooms(updatedRooms);
+export async function updateRoomStatus(roomNumber: string, status: RoomStatus) {
+  const { error } = await supabase.from("rooms").update({ status }).eq("number", roomNumber);
+  if (error) console.error("updateRoomStatus failed:", error.message);
   refreshRooms();
 }
 
-export function updateRoom(roomNumber: string, updates: Partial<Room>) {
-  const allRooms = getRooms();
-
-  const updatedRooms = allRooms.map((room: Room) => {
-    if (room.number === roomNumber) {
-      return {
-        ...room,
-        ...updates,
-      };
-    }
-
-    return room;
-  });
-
-  saveRooms(updatedRooms);
+export async function updateRoom(roomNumber: string, updates: Partial<Room>) {
+  const { error } = await supabase.from("rooms").update(updates).eq("number", roomNumber);
+  if (error) console.error("updateRoom failed:", error.message);
   refreshRooms();
 }
 
-export function resetRoomsToDefault() {
-  saveRooms(rooms);
+export async function resetRoomsToDefault() {
+  const { error: delErr } = await supabase.from("rooms").delete().neq("number", "__none__");
+  if (delErr) console.error("reset delete failed:", delErr.message);
+
+  const { error } = await supabase.from("rooms").insert(DEFAULT_ROOMS);
+  if (error) console.error("reset insert failed:", error.message);
+
   refreshRooms();
 }
 
-export function addRoom(newRoom: Room) {
-  const allRooms = getRooms();
+export async function addRoom(newRoom: Room) {
+  const { data: existing } = await supabase
+    .from("rooms")
+    .select("number")
+    .eq("number", newRoom.number)
+    .maybeSingle();
 
-  if (allRooms.some((r) => r.number === newRoom.number)) {
+  if (existing) {
     throw new Error("ROOM_EXISTS");
   }
 
-  const updated = [...allRooms, newRoom].sort((a, b) =>
-    a.number.localeCompare(b.number, undefined, { numeric: true })
-  );
+  const { error } = await supabase.from("rooms").insert(newRoom);
+  if (error) throw error;
 
-  saveRooms(updated);
   refreshRooms();
 }
 
-export function deleteRoom(roomNumber: string) {
-  const allRooms = getRooms();
-  const updated = allRooms.filter((r) => r.number !== roomNumber);
-
-  saveRooms(updated);
+export async function deleteRoom(roomNumber: string) {
+  const { error } = await supabase.from("rooms").delete().eq("number", roomNumber);
+  if (error) console.error("deleteRoom failed:", error.message);
   refreshRooms();
 }
 
