@@ -22,21 +22,26 @@ const DEFAULT_PROFILE: HotelProfile = {
 export function getHotelProfile(): HotelProfile {
   const saved = localStorage.getItem(HOTEL_PROFILE_KEY);
   if (saved) {
-    const parsed = JSON.parse(saved);
+    try {
+      const parsed = JSON.parse(saved);
 
-    // Migrate older profiles that stored a single `contactPhone` string.
-    if (!Array.isArray(parsed.contactPhones)) {
-      const legacy: string | undefined = parsed.contactPhone;
-      parsed.contactPhones = legacy ? [legacy] : [...DEFAULT_PROFILE.contactPhones];
-      delete parsed.contactPhone;
-      localStorage.setItem(HOTEL_PROFILE_KEY, JSON.stringify(parsed));
+      // Migrate older profiles that stored a single `contactPhone` string.
+      if (!Array.isArray(parsed.contactPhones)) {
+        const legacy: string | undefined = parsed.contactPhone;
+        parsed.contactPhones = legacy ? [legacy] : [...DEFAULT_PROFILE.contactPhones];
+        delete parsed.contactPhone;
+        localStorage.setItem(HOTEL_PROFILE_KEY, JSON.stringify(parsed));
+      }
+
+      if (parsed.contactPhones.length === 0) {
+        parsed.contactPhones = [""];
+      }
+
+      return parsed;
+    } catch {
+      localStorage.setItem(HOTEL_PROFILE_KEY, JSON.stringify(DEFAULT_PROFILE));
+      return { ...DEFAULT_PROFILE };
     }
-
-    if (parsed.contactPhones.length === 0) {
-      parsed.contactPhones = [""];
-    }
-
-    return parsed;
   }
 
   localStorage.setItem(HOTEL_PROFILE_KEY, JSON.stringify(DEFAULT_PROFILE));

@@ -76,7 +76,7 @@ function RoomsPage() {
   const [overrideError, setOverrideError] = useState("");
   const [hasRealBooking, setHasRealBooking] = useState(false);
 
-  function openRoom(r: Room) {
+  async function openRoom(r: Room) {
     setSelected(r);
     setEditStatus(r.status);
     setEditType(r.type);
@@ -88,7 +88,8 @@ function RoomsPage() {
     setOverrideNote("");
     setOverridePassword("");
     setOverrideError("");
-    setHasRealBooking(getActiveStays().some((s: any) => s.room === r.number));
+    const stays = await getActiveStays();
+    setHasRealBooking(stays.some((s: any) => s.room === r.number));
   }
 
   function addAmenity() {

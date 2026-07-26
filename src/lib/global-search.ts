@@ -35,14 +35,14 @@ function matches(query: string, ...fields: (string | undefined | null)[]) {
  * old dummy/static navbar search box. Returns up to `limit` results per
  * category, most-relevant first.
  */
-export function searchAll(rawQuery: string, limit = 5): SearchResult[] {
+export async function searchAll(rawQuery: string, limit = 5): Promise<SearchResult[]> {
   const query = rawQuery.trim();
   if (query.length < 1) return [];
 
   const results: SearchResult[] = [];
 
   // 1) Currently checked-in guests (active stays)
-  const stays = getActiveStays();
+  const stays = await getActiveStays();
   for (const s of stays) {
     if (matches(query, s.customer, s.phone, s.room, s.nid)) {
       results.push({
@@ -78,7 +78,7 @@ export function searchAll(rawQuery: string, limit = 5): SearchResult[] {
   }
 
   // 3) Rooms
-  const rooms = getRooms();
+  const rooms = await getRooms();
   for (const room of rooms) {
     if (matches(query, room.number, room.type)) {
       results.push({

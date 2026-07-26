@@ -124,9 +124,26 @@ function NavSearch() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const ref = useRef<HTMLDivElement>(null);
 
-  const results = query.trim().length > 0 ? searchAll(query) : [];
+  useEffect(() => {
+    let cancelled = false;
+    const q = query.trim();
+
+    if (q.length === 0) {
+      setResults([]);
+      return;
+    }
+
+    searchAll(q).then((res) => {
+      if (!cancelled) setResults(res);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [query]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
