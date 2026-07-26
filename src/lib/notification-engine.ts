@@ -52,35 +52,13 @@ export function getNotificationPermission(): NotificationPermission {
   return Notification.permission;
 }
 
-export function notifyCheckIn(customer: string, room: string, bookingId?: string) {
-  const prefs = getNotificationPrefs();
-  if (!prefs.checkInAlerts) return;
-
-  fireNotification(
-    "Guest Checked In",
-    `${customer || "Guest"} — Room ${room}${bookingId ? ` (${bookingId})` : ""}`
-  );
-}
-
-export function notifyCheckOut(customer: string, room: string, due?: number) {
-  const prefs = getNotificationPrefs();
-  if (!prefs.checkOutAlerts) return;
-
-  fireNotification(
-    "Guest Checked Out",
-    due && due > 0
-      ? `${customer || "Guest"} — Room ${room} (বকেয়া ৳${due.toLocaleString()})`
-      : `${customer || "Guest"} — Room ${room}`
-  );
-}
-
-function checkPendingCheckouts() {
+async function checkPendingCheckouts() {
   const prefs = getNotificationPrefs();
   if (!prefs.pendingCheckoutAlerts) return;
 
   const notified = getNotifiedCheckouts();
   const now = Date.now();
-  const stays = getActiveStays();
+  const stays = await getActiveStays();
 
   stays.forEach((stay: any) => {
     if (notified.includes(stay.id)) return;
@@ -99,7 +77,7 @@ function checkPendingCheckouts() {
   });
 }
 
-function checkDailySummary() {
+async function checkDailySummary() {
   const prefs = getNotificationPrefs();
   if (!prefs.lowOccupancyAlerts) return;
 
@@ -109,7 +87,7 @@ function checkDailySummary() {
   if (lastFired === todayStr) return;
   if (now.getHours() < 9) return;
 
-  const rooms = getRooms();
+  const rooms = await getRooms();
   const occupied = rooms.filter((r: any) => r.status === "Occupied").length;
   const total = rooms.length || 1;
   const occupancyPct = Math.round((occupied / total) * 100);
@@ -119,6 +97,30 @@ function checkDailySummary() {
     `${occupied}/${total} rooms occupied (${occupancyPct}%) today.`
   );
   localStorage.setItem(LAST_DAILY_SUMMARY_KEY, todayStr);
+}
+
+// Fired right when a guest checks in (called from booking.tsx)
+export function notifyCheckIn(customerName: string, room: string, bookingId: string) {
+  const prefs = getNotificationPrefs();
+  if (!prefs.paymentReceivedAlerts) return;
+
+  fireNotification(
+    "New Check-in",
+    `${customerName} checked into Room ${room} (${bookingId}).`
+  );
+}
+
+// Fired right when a guest checks out (called from checkout.tsx)
+export function notifyCheckOut(customerName: string, room: string, due: number) {
+  const prefs = getNotificationPrefs();
+  if (!prefs.paymentReceivedAlerts) return;
+
+  fireNotification(
+    "Guest Checked Out",
+    due > 0
+      ? `${customerName} checked out of Room ${room} — ৳${due.toLocaleString()} due carried forward.`
+      : `${customerName} checked out of Room ${room} — fully paid.`
+  );
 }
 
 let intervalId: number | null = null;

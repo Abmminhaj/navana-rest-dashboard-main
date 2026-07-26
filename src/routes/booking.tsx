@@ -100,9 +100,10 @@ function BookingPage() {
   const [customerHistory, setCustomerHistory] = useState<CustomerHistoryRecord[]>([]);
   const [bookingId, setBookingId] = useState("");
 
-  function generateBookingId() {
+  async function generateBookingId() {
     const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const todaysCount = getBookings().filter(
+    const allBookings = await getBookings();
+    const todaysCount = allBookings.filter(
       (b: any) => typeof b.bookingId === "string" && b.bookingId.startsWith(`NRH-${todayStr}-`)
     ).length;
     const nextSeq = String(todaysCount + 1).padStart(4, "0");
@@ -148,7 +149,7 @@ function BookingPage() {
 
     loadRooms();
     setCustomerHistory(getCustomerHistory());
-    setBookingId(generateBookingId());
+    generateBookingId().then(setBookingId);
 
     window.addEventListener("roomsUpdated", loadRooms);
     return () => window.removeEventListener("roomsUpdated", loadRooms);
@@ -255,18 +256,18 @@ function BookingPage() {
       notes,
     };
 
-    saveBooking(bookingData);
-    saveActiveStay(activeStay);
+    await saveBooking(bookingData);
+    await saveActiveStay(activeStay);
     await occupyRoom(selectedRoom);
     refreshRooms();
     notifyCheckIn(customerName, selectedRoom, bookingId);
 
     console.log("Booking Saved:", bookingData);
     alert(`Booking ${bookingId} saved successfully! Form cleared for the next guest.`);
-    resetForm();
+    await resetForm();
   }
 
-  function resetForm() {
+  async function resetForm() {
     setPhone("");
     setSelectedRoom("");
     setRoomTypeFilter("");
@@ -297,7 +298,7 @@ function BookingPage() {
     setPaymentMethod("Cash");
     setShowSuggestion(true);
     setPreviousDue(0);
-    setBookingId(generateBookingId());
+    setBookingId(await generateBookingId());
   }
 
   return (

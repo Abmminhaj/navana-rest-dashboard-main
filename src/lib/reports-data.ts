@@ -72,12 +72,12 @@ function getPeriodRanges(period: ReportPeriod): { label: string; start: Date; en
   return ranges;
 }
 
-export function getReportData(period: ReportPeriod): PeriodRow[] {
-  const bookings = getBookings();
+export async function getReportData(period: ReportPeriod): Promise<PeriodRow[]> {
+  const bookings = await getBookings();
   const history = getCustomerHistory();
-  const activeStays = getActiveStays();
+  const activeStays = await getActiveStays();
   const expenses = getExpenses();
-  const rooms = getRooms();
+  const rooms = await getRooms();
   const totalRooms = rooms.length || 1;
   const now = new Date();
 

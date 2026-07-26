@@ -110,8 +110,8 @@ function Dashboard() {
   useEffect(() => {
     async function loadAll() {
       setRooms(await getRooms()); // now async — comes from Supabase
-      setActiveStays(getActiveStays());
-      setBookings(getBookings());
+      setActiveStays(await getActiveStays()); // now async — comes from Supabase
+      setBookings(await getBookings()); // now async — comes from Supabase
       setHistory(getCustomerHistory());
       setExpenses(getExpenses());
       setAdminName(getAdminDisplayName());

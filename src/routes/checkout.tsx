@@ -56,11 +56,11 @@ function CheckoutPage() {
   const [depositDate, setDepositDate] = useState(new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
-    setList(getActiveStays());
+    refreshList();
   }, []);
 
-  function refreshList() {
-    setList(getActiveStays());
+  async function refreshList() {
+    setList(await getActiveStays());
   }
 
   function openCheckout(stay: ActiveStay) {
@@ -77,13 +77,13 @@ function CheckoutPage() {
     setCheckoutNotes("");
   }
 
-  function handleSaveDeposit() {
+  async function handleSaveDeposit() {
     if (!depositTarget) return;
     const amt = Number(depositAmount);
     if (!amt || amt <= 0) return;
 
-    addDeposit(depositTarget.id, amt, depositDate);
-    refreshList();
+    await addDeposit(depositTarget.id, amt, depositDate);
+    await refreshList();
     setDepositTarget(null);
     setDepositAmount("");
     setDepositDate(new Date().toISOString().slice(0, 10));
@@ -340,10 +340,10 @@ function CheckoutPage() {
                     checkoutDate,
                     checkoutTime,
                   });
-                  removeActiveStay(active.id);
+                  await removeActiveStay(active.id);
                   await updateRoomStatus(active.room, "Available");
                   notifyCheckOut(active.customer, active.room, finalDue);
-                  refreshList();
+                  await refreshList();
                   setActive(null);
                   alert(
                     finalDue > 0

@@ -1,54 +1,96 @@
-const STORAGE_KEY = "navana_active_stays";
+import { supabase } from "./supabaseClient";
 
-export function getActiveStays() {
-  const data = localStorage.getItem(STORAGE_KEY);
+function rowToStay(row: any) {
+  return {
+    id: row.id,
+    bookingId: row.booking_id,
+    guestType: row.guest_type,
+    room: row.room,
+    customer: row.customer,
+    fatherName: row.father_name,
+    phone: row.phone,
+    nid: row.nid,
+    profession: row.profession,
+    nationality: row.nationality,
+    address: row.address,
+    divisionId: row.division_id,
+    districtId: row.district_id,
+    upazilaId: row.upazila_id,
+    village: row.village,
+    houseRoad: row.house_road,
+    checkIn: row.check_in,
+    expectedCheckOut: row.expected_check_out,
+    rent: Number(row.rent),
+    advance: Number(row.advance),
+    remaining: Number(row.remaining),
+    previousDue: Number(row.previous_due) || 0,
+    nidPhoto: row.nid_photo,
+    customerPhoto: row.customer_photo,
+    notes: row.notes,
+    deposits: (row.stay_deposits || []).map((d: any) => ({
+      amount: Number(d.amount),
+      date: d.date,
+      method: d.method,
+      note: d.note,
+    })),
+  };
+}
 
-  if (!data) {
+export async function getActiveStays(): Promise<any[]> {
+  const { data, error } = await supabase
+    .from("active_stays")
+    .select("*, stay_deposits(*)")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("getActiveStays failed:", error.message);
     return [];
   }
-
-  return JSON.parse(data);
+  return (data || []).map(rowToStay);
 }
 
-export function saveActiveStay(stay: any) {
-  const stays = getActiveStays();
-
-  stays.push(stay);
-
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(stays)
-  );
-}
-
-export function removeActiveStay(id: string) {
-  const stays = getActiveStays().filter(
-    (stay: any) => stay.id !== id
-  );
-
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(stays)
-  );
-}
-
-export function addDeposit(id: string, amount: number, date?: string) {
-  const stays = getActiveStays().map((stay: any) => {
-    if (stay.id !== id) return stay;
-
-    const deposits = Array.isArray(stay.deposits) ? stay.deposits : [];
-
-    return {
-      ...stay,
-      deposits: [
-        ...deposits,
-        { amount, date: date || new Date().toISOString().slice(0, 10) },
-      ],
-    };
+export async function saveActiveStay(stay: any) {
+  const { error } = await supabase.from("active_stays").insert({
+    booking_id: stay.bookingId,
+    guest_type: stay.guestType,
+    room: stay.room,
+    customer: stay.customer,
+    father_name: stay.fatherName,
+    phone: stay.phone,
+    nid: stay.nid,
+    profession: stay.profession,
+    nationality: stay.nationality,
+    address: stay.address,
+    division_id: stay.divisionId,
+    district_id: stay.districtId,
+    upazila_id: stay.upazilaId,
+    village: stay.village,
+    house_road: stay.houseRoad,
+    check_in: stay.checkIn,
+    expected_check_out: stay.expectedCheckOut,
+    rent: stay.rent,
+    advance: stay.advance,
+    remaining: stay.remaining,
+    previous_due: stay.previousDue || 0,
+    nid_photo: stay.nidPhoto,
+    customer_photo: stay.customerPhoto,
+    notes: stay.notes,
   });
 
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(stays)
-  );
+  if (error) console.error("saveActiveStay failed:", error.message);
+}
+
+export async function removeActiveStay(id: string) {
+  const { error } = await supabase.from("active_stays").delete().eq("id", id);
+  if (error) console.error("removeActiveStay failed:", error.message);
+}
+
+export async function addDeposit(id: string, amount: number, date?: string) {
+  const { error } = await supabase.from("stay_deposits").insert({
+    stay_id: id,
+    amount,
+    date: date || new Date().toISOString().slice(0, 10),
+  });
+
+  if (error) console.error("addDeposit failed:", error.message);
 }
