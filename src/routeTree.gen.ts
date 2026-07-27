@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RoomsRouteImport } from './routes/rooms'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as ExpensesRouteImport } from './routes/expenses'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as CheckoutRouteImport } from './routes/checkout'
@@ -31,6 +32,11 @@ const RoomsRoute = RoomsRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryRoute = InventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExpensesRoute = ExpensesRouteImport.update({
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/checkout': typeof CheckoutRoute
   '/customers': typeof CustomersRoute
   '/expenses': typeof ExpensesRoute
+  '/inventory': typeof InventoryRoute
   '/reports': typeof ReportsRoute
   '/rooms': typeof RoomsRoute
   '/settings': typeof SettingsRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/checkout': typeof CheckoutRoute
   '/customers': typeof CustomersRoute
   '/expenses': typeof ExpensesRoute
+  '/inventory': typeof InventoryRoute
   '/reports': typeof ReportsRoute
   '/rooms': typeof RoomsRoute
   '/settings': typeof SettingsRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/checkout': typeof CheckoutRoute
   '/customers': typeof CustomersRoute
   '/expenses': typeof ExpensesRoute
+  '/inventory': typeof InventoryRoute
   '/reports': typeof ReportsRoute
   '/rooms': typeof RoomsRoute
   '/settings': typeof SettingsRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/customers'
     | '/expenses'
+    | '/inventory'
     | '/reports'
     | '/rooms'
     | '/settings'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/customers'
     | '/expenses'
+    | '/inventory'
     | '/reports'
     | '/rooms'
     | '/settings'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/customers'
     | '/expenses'
+    | '/inventory'
     | '/reports'
     | '/rooms'
     | '/settings'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   CheckoutRoute: typeof CheckoutRoute
   CustomersRoute: typeof CustomersRoute
   ExpensesRoute: typeof ExpensesRoute
+  InventoryRoute: typeof InventoryRoute
   ReportsRoute: typeof ReportsRoute
   RoomsRoute: typeof RoomsRoute
   SettingsRoute: typeof SettingsRoute
@@ -155,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory': {
+      id: '/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof InventoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/expenses': {
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   CheckoutRoute: CheckoutRoute,
   CustomersRoute: CustomersRoute,
   ExpensesRoute: ExpensesRoute,
+  InventoryRoute: InventoryRoute,
   ReportsRoute: ReportsRoute,
   RoomsRoute: RoomsRoute,
   SettingsRoute: SettingsRoute,

@@ -13,8 +13,10 @@ const navItems = [
   { to: "/rooms", label: "Rooms" },
   { to: "/expenses", label: "Expenses" },
   { to: "/reports", label: "Reports" },
-  { to: "/settings", label: "Settings" },
+  { to: "/inventory", label: "Inventory" },
 ] as const;
+
+const settingsItem = { to: "/settings", label: "Settings" } as const;
 
 function timeAgo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -67,7 +69,6 @@ function NotificationBell() {
           </span>
         )}
       </button>
-
       {open && (
         <div className="absolute right-0 top-12 z-50 w-80 rounded-xl border border-border bg-card shadow-2xl">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -81,7 +82,6 @@ function NotificationBell() {
               </button>
             )}
           </div>
-
           <div className="max-h-80 overflow-y-auto">
             {log.length === 0 ? (
               <div className="px-4 py-10 text-center text-xs text-muted-foreground">
@@ -130,16 +130,13 @@ function NavSearch() {
   useEffect(() => {
     let cancelled = false;
     const q = query.trim();
-
     if (q.length === 0) {
       setResults([]);
       return;
     }
-
     searchAll(q).then((res) => {
       if (!cancelled) setResults(res);
     });
-
     return () => {
       cancelled = true;
     };
@@ -194,7 +191,6 @@ function NavSearch() {
           <X className="h-3.5 w-3.5" />
         </button>
       )}
-
       {open && query.trim().length > 0 && (
         <div className="absolute left-0 top-12 z-50 w-full rounded-xl border border-border bg-card shadow-2xl">
           {results.length === 0 ? (
@@ -266,9 +262,7 @@ export function TopNav({ className = "" }: { className?: string }) {
 
           <div className="flex flex-1 items-center justify-end gap-3">
             <NavSearch />
-
             <NotificationBell />
-
             <button className="flex h-10 items-center gap-2 rounded-lg border border-border bg-background pl-1 pr-3 hover:bg-accent">
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
                 {adminName.split(" ").map((p) => p[0]).join("")}
@@ -297,6 +291,18 @@ export function TopNav({ className = "" }: { className?: string }) {
               {item.label}
             </Link>
           ))}
+
+          {/* Settings pushed to the far right, separate from the main tabs */}
+          <Link
+            to={settingsItem.to}
+            className="relative ml-auto whitespace-nowrap px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground data-[status=active]:text-primary"
+            activeProps={{
+              className:
+                "relative ml-auto whitespace-nowrap px-4 py-3 text-sm font-semibold text-primary after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary",
+            }}
+          >
+            {settingsItem.label}
+          </Link>
         </nav>
       </div>
     </header>
