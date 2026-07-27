@@ -32,8 +32,8 @@ function NotificationBell() {
   const [log, setLog] = useState<NotificationLogEntry[]>([]);
   const ref = useRef<HTMLDivElement>(null);
 
-  function load() {
-    setLog(getNotificationLog());
+  async function load() {
+    setLog(await getNotificationLog());
   }
 
   useEffect(() => {

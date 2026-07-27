@@ -1,4 +1,5 @@
-const STORAGE_KEY = "navana_notification_log";
+import { supabase } from "./supabaseClient";
+
 const MAX_ENTRIES = 50;
 
 export interface NotificationLogEntry {
@@ -9,20 +10,33 @@ export interface NotificationLogEntry {
   read: boolean;
 }
 
-export function getNotificationLog(): NotificationLogEntry[] {
-  const data = localStorage.getItem(STORAGE_KEY);
-  if (!data) return [];
-  return JSON.parse(data);
+function rowToEntry(row: any): NotificationLogEntry {
+  return {
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    time: row.time,
+    read: row.read,
+  };
 }
 
-function saveNotificationLog(list: NotificationLogEntry[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  refreshNotificationLog();
+export async function getNotificationLog(): Promise<NotificationLogEntry[]> {
+  const { data, error } = await supabase
+    .from("notification_log")
+    .select("*")
+    .order("time", { ascending: false })
+    .limit(MAX_ENTRIES);
+
+  if (error) {
+    console.error("getNotificationLog failed:", error.message);
+    return [];
+  }
+
+  return (data || []).map(rowToEntry);
 }
 
-export function addNotificationLogEntry(entry: { title: string; body: string }) {
-  const list = getNotificationLog();
-  const newEntry: NotificationLogEntry = {
+export async function addNotificationLogEntry(entry: { title: string; body: string }) {
+  const newEntry = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     title: entry.title,
     body: entry.body,
@@ -30,22 +44,35 @@ export function addNotificationLogEntry(entry: { title: string; body: string }) 
     read: false,
   };
 
-  const updated = [newEntry, ...list].slice(0, MAX_ENTRIES);
-  saveNotificationLog(updated);
+  const { error } = await supabase.from("notification_log").insert(newEntry);
+  if (error) console.error("addNotificationLogEntry failed:", error.message);
+
+  refreshNotificationLog();
 }
 
-export function markAllRead() {
-  const updated = getNotificationLog().map((n) => ({ ...n, read: true }));
-  saveNotificationLog(updated);
+export async function markAllRead() {
+  const { error } = await supabase.from("notification_log").update({ read: true }).eq("read", false);
+  if (error) console.error("markAllRead failed:", error.message);
+  refreshNotificationLog();
 }
 
-export function markRead(id: string) {
-  const updated = getNotificationLog().map((n) => (n.id === id ? { ...n, read: true } : n));
-  saveNotificationLog(updated);
+export async function markRead(id: string) {
+  const { error } = await supabase.from("notification_log").update({ read: true }).eq("id", id);
+  if (error) console.error("markRead failed:", error.message);
+  refreshNotificationLog();
 }
 
-export function getUnreadCount(): number {
-  return getNotificationLog().filter((n) => !n.read).length;
+export async function getUnreadCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from("notification_log")
+    .select("*", { count: "exact", head: true })
+    .eq("read", false);
+
+  if (error) {
+    console.error("getUnreadCount failed:", error.message);
+    return 0;
+  }
+  return count || 0;
 }
 
 export function refreshNotificationLog() {
