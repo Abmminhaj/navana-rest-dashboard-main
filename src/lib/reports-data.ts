@@ -74,9 +74,9 @@ function getPeriodRanges(period: ReportPeriod): { label: string; start: Date; en
 
 export async function getReportData(period: ReportPeriod): Promise<PeriodRow[]> {
   const bookings = await getBookings();
-  const history = getCustomerHistory();
+  const history = await getCustomerHistory();
   const activeStays = await getActiveStays();
-  const expenses = getExpenses();
+  const expenses = await getExpenses();
   const rooms = await getRooms();
   const totalRooms = rooms.length || 1;
   const now = new Date();

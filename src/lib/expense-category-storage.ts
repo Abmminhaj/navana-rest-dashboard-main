@@ -1,4 +1,4 @@
-const STORAGE_KEY = "navana_expense_categories";
+import { supabase } from "./supabaseClient";
 
 const DEFAULT_CATEGORIES = [
   "Rent",
@@ -11,54 +11,61 @@ const DEFAULT_CATEGORIES = [
   "Other",
 ];
 
-export function getExpenseCategories(): string[] {
-  const saved = localStorage.getItem(STORAGE_KEY);
+export async function getExpenseCategories(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("expense_categories")
+    .select("name")
+    .order("created_at", { ascending: true });
 
-  if (saved) {
-    return JSON.parse(saved);
+  if (error) {
+    console.error("getExpenseCategories failed:", error.message);
+    return [];
   }
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_CATEGORIES));
-
-  return [...DEFAULT_CATEGORIES];
+  return (data || []).map((row) => row.name as string);
 }
 
-function saveExpenseCategories(categories: string[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(categories));
-}
-
-// Returns the updated list. Throws CATEGORY_EXISTS if it (case-insensitively) already exists.
-export function addExpenseCategory(name: string): string[] {
+// Returns the updated list. Throws CATEGORY_EMPTY / CATEGORY_EXISTS on bad input.
+export async function addExpenseCategory(name: string): Promise<string[]> {
   const trimmed = name.trim();
-  const categories = getExpenseCategories();
 
   if (!trimmed) {
     throw new Error("CATEGORY_EMPTY");
   }
 
+  const categories = await getExpenseCategories();
+
   if (categories.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
     throw new Error("CATEGORY_EXISTS");
   }
 
+  const { error } = await supabase.from("expense_categories").insert({ name: trimmed });
+  if (error) throw error;
+
   const updated = [...categories, trimmed];
-  saveExpenseCategories(updated);
   refreshExpenseCategories();
-
   return updated;
 }
 
-export function deleteExpenseCategory(name: string): string[] {
-  const updated = getExpenseCategories().filter((c) => c !== name);
-  saveExpenseCategories(updated);
-  refreshExpenseCategories();
+export async function deleteExpenseCategory(name: string): Promise<string[]> {
+  const { error } = await supabase.from("expense_categories").delete().eq("name", name);
+  if (error) console.error("deleteExpenseCategory failed:", error.message);
 
+  const updated = await getExpenseCategories();
+  refreshExpenseCategories();
   return updated;
 }
 
-export function resetExpenseCategoriesToDefault(): string[] {
-  saveExpenseCategories(DEFAULT_CATEGORIES);
-  refreshExpenseCategories();
+export async function resetExpenseCategoriesToDefault(): Promise<string[]> {
+  const { error: delErr } = await supabase.from("expense_categories").delete().neq("name", "__none__");
+  if (delErr) console.error("reset delete failed:", delErr.message);
 
+  const { error } = await supabase
+    .from("expense_categories")
+    .insert(DEFAULT_CATEGORIES.map((name) => ({ name })));
+  if (error) console.error("reset insert failed:", error.message);
+
+  refreshExpenseCategories();
   return [...DEFAULT_CATEGORIES];
 }
 

@@ -96,7 +96,9 @@ function CustomersPage() {
   const [toDate, setToDate] = useState("");
 
   useEffect(() => {
-    setHistory(getCustomerHistory());
+    (async () => {
+      setHistory(await getCustomerHistory());
+    })();
   }, []);
 
   const profiles = useMemo(() => buildProfiles(history), [history]);

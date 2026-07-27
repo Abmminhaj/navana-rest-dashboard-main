@@ -356,7 +356,7 @@ function CheckoutPage() {
               <button
                 onClick={async () => {
                   const finalDue = Math.max(0, totalDue - paidNow);
-                  saveCustomerHistory({
+                  await saveCustomerHistory({
                     ...active,
                     remaining: paidNow,
                     due: finalDue,

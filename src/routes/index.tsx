@@ -11,7 +11,7 @@ import {
   CalendarCheck, BedDouble, DoorOpen, TrendingUp, TrendingDown, Wallet, Clock, ArrowRight,
 } from "lucide-react";
 import { Card, PageHeader, SectionTitle, StatusPill, buttonPrimary } from "@/components/ui-kit";
-import { type Room } from "@/lib/mock-data";
+import { type Room, type Expense } from "@/lib/mock-data";
 import { getRooms } from "@/lib/room-storage";
 import { getActiveStays } from "@/lib/stay-storage";
 import { getBookings } from "@/lib/booking-storage";
@@ -66,7 +66,7 @@ function bookingMonthKey(bookingId: string | undefined) {
   return match ? `${match[1]}-${match[2]}` : null;
 }
 
-function useMonthlyFinancials(bookings: any[], history: CustomerHistoryRecord[], expenses: ReturnType<typeof getExpenses>) {
+function useMonthlyFinancials(bookings: any[], history: CustomerHistoryRecord[], expenses: Expense[]) {
   return useMemo(() => {
     const months: { key: string; month: string }[] = [];
     const now = new Date();
@@ -103,7 +103,7 @@ function Dashboard() {
   const [activeStays, setActiveStays] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [history, setHistory] = useState<CustomerHistoryRecord[]>([]);
-  const [expenses, setExpenses] = useState<ReturnType<typeof getExpenses>>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [today, setToday] = useState("");
   const [adminName, setAdminName] = useState("Arif");
 
@@ -112,8 +112,8 @@ function Dashboard() {
       setRooms(await getRooms()); // now async — comes from Supabase
       setActiveStays(await getActiveStays()); // now async — comes from Supabase
       setBookings(await getBookings()); // now async — comes from Supabase
-      setHistory(getCustomerHistory());
-      setExpenses(getExpenses());
+      setHistory(await getCustomerHistory());
+      setExpenses(await getExpenses());
       setAdminName(getAdminDisplayName());
       setToday(todayISO());
     }

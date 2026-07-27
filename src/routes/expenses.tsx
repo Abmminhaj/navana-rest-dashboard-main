@@ -35,9 +35,9 @@ function ExpensesPage() {
   const [categoryError, setCategoryError] = useState("");
 
   useEffect(() => {
-    const loadExpenses = () => setExpenses(getExpenses());
-    const loadCategories = () => {
-      const cats = getExpenseCategories();
+    const loadExpenses = async () => setExpenses(await getExpenses());
+    const loadCategories = async () => {
+      const cats = await getExpenseCategories();
       setCategories(cats);
       setCategory((current) => current || cats[0] || "");
     };
@@ -76,7 +76,7 @@ function ExpensesPage() {
     setError("");
   }
 
-  function handleSave() {
+  async function handleSave() {
     const amountNum = parseFloat(amount);
 
     if (!category) {
@@ -88,7 +88,7 @@ function ExpensesPage() {
       return;
     }
 
-    addExpense({
+    await addExpense({
       date,
       category,
       description: description.trim(),
@@ -100,17 +100,17 @@ function ExpensesPage() {
     resetForm();
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     if (window.confirm("এই Expense-টি মুছে ফেলতে চান?")) {
-      deleteExpense(id);
+      await deleteExpense(id);
     }
   }
 
-  function handleAddCategory() {
+  async function handleAddCategory() {
     setCategoryError("");
 
     try {
-      const updated = addExpenseCategory(newCategory);
+      const updated = await addExpenseCategory(newCategory);
       setCategory(newCategory.trim());
       setNewCategory("");
       setShowAddCategory(false);
@@ -124,10 +124,10 @@ function ExpensesPage() {
     }
   }
 
-  function handleDeleteCategory(cat: string) {
+  async function handleDeleteCategory(cat: string) {
     if (!window.confirm(`"${cat}" Category মুছে ফেলতে চান? (আগের Expense-এ এই Category-র নাম থেকে যাবে)`)) return;
 
-    const updated = deleteExpenseCategory(cat);
+    const updated = await deleteExpenseCategory(cat);
     setCategories(updated);
     if (category === cat) {
       setCategory(updated[0] || "");

@@ -58,7 +58,7 @@ export async function searchAll(rawQuery: string, limit = 5): Promise<SearchResu
   }
 
   // 2) Past customer history (checked-out guests) — dedupe by phone
-  const history = getCustomerHistory();
+  const history = await getCustomerHistory();
   const seenPhones = new Set<string>();
   for (const r of history) {
     const key = (r.phone || "").replace(/\D/g, "") || r.customer;

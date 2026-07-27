@@ -148,7 +148,7 @@ function BookingPage() {
     }
 
     loadRooms();
-    setCustomerHistory(getCustomerHistory());
+    getCustomerHistory().then(setCustomerHistory);
     generateBookingId().then(setBookingId);
 
     window.addEventListener("roomsUpdated", loadRooms);
