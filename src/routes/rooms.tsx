@@ -116,7 +116,7 @@ function RoomsPage() {
 
     // Rule 1b: Occupied room WITHOUT a real booking (manual override) — releasing it still needs Admin Password
     if (selected.status === "Occupied" && !hasRealBooking && editStatus !== "Occupied") {
-      if (!verifyAdminPassword(overridePassword)) {
+      if (!(await verifyAdminPassword(overridePassword))) {
         setOverrideError("এই Room আগে Manual ভাবে Occupied করা হয়েছিল (কোনো Real Booking নেই)। Release করতে Admin Password দাও।");
         return;
       }
@@ -128,7 +128,7 @@ function RoomsPage() {
         setOverrideError("Special Note লিখতে হবে।");
         return;
       }
-      if (!verifyAdminPassword(overridePassword)) {
+      if (!(await verifyAdminPassword(overridePassword))) {
         setOverrideError("Admin Password ভুল হয়েছে।");
         return;
       }
@@ -175,7 +175,7 @@ function RoomsPage() {
   }
 
   async function handleConfirmReset() {
-    if (!verifyAdminPassword(resetPassword)) {
+    if (!(await verifyAdminPassword(resetPassword))) {
       setResetError("Admin Password ভুল হয়েছে।");
       return;
     }

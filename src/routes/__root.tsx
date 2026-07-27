@@ -12,6 +12,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { TopNav } from "../components/TopNav";
 import NotificationEngine from "../components/NotificationEngine";
+import { loadSettingsCache } from "../lib/settings-storage";
 
 function NotFoundComponent() {
   return (
@@ -117,6 +118,10 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    loadSettingsCache();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
