@@ -75,3 +75,55 @@ export function logout() {
 export function refreshAuth() {
   window.dispatchEvent(new Event("authUpdated"));
 }
+
+// ---------------- Page permissions ----------------
+
+export const APP_PAGES: { path: string; label: string }[] = [
+  { path: "/", label: "Dashboard" },
+  { path: "/booking", label: "Booking" },
+  { path: "/checkout", label: "Check Out" },
+  { path: "/customers", label: "Customer Information" },
+  { path: "/rooms", label: "Rooms" },
+  { path: "/expenses", label: "Expenses" },
+  { path: "/reports", label: "Reports" },
+  { path: "/inventory", label: "Inventory" },
+  { path: "/settings", label: "Settings" },
+];
+
+export function canAccess(user: AuthUser | null, path: string): boolean {
+  if (!user) return false;
+  if (user.isAdmin) return true;
+  return user.allowedPages.includes(path);
+}
+
+// Where to send someone right after login (or if they land on a page they
+// can't see). Returns null only if a non-admin has literally no pages
+// assigned yet — an admin should fix that from Settings.
+export function landingPageFor(user: AuthUser): string | null {
+  if (user.isAdmin) return "/";
+  if (user.allowedPages.includes("/")) return "/";
+  return user.allowedPages[0] || null;
+}
+
+// ---------------- Staff login credentials (Settings → Users & Roles) ----------------
+// Both phone and password are optional here — pass only what you want to change.
+// (Backed by set_staff_credentials(), which keeps the existing value for
+// whichever of the two is left out.)
+
+export async function setStaffCredentials(staffId: string, phone?: string, password?: string) {
+  const { error } = await supabase.rpc("set_staff_credentials", {
+    p_staff_id: staffId,
+    p_phone: phone || null,
+    p_password: password || null,
+  });
+  if (error) console.error("setStaffCredentials failed:", error.message);
+}
+
+export async function getStaffPhone(staffId: string): Promise<string> {
+  const { data, error } = await supabase.rpc("get_staff_phone", { p_staff_id: staffId });
+  if (error) {
+    console.error("getStaffPhone failed:", error.message);
+    return "";
+  }
+  return data || "";
+}

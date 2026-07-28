@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Bell, Search, Hotel, ChevronDown, X, BedDouble, UserRound, History, LogOut } from "lucide-react";
 import { getNotificationLog, markAllRead, markRead, type NotificationLogEntry } from "@/lib/notification-log-storage";
 import { searchAll, searchResultTypeLabel, type SearchResult, type SearchResultType } from "@/lib/global-search";
-import { getCurrentUser, logout } from "@/lib/auth-storage";
+import { getCurrentUser, logout, canAccess } from "@/lib/auth-storage";
 
 const navItems = [
   { to: "/", label: "Dashboard" },
@@ -314,7 +314,7 @@ export function TopNav({ className = "" }: { className?: string }) {
         </div>
 
         <nav className="flex items-center gap-1 overflow-x-auto pb-px">
-          {navItems.map((item) => (
+          {navItems.filter((item) => canAccess(user, item.to)).map((item) => (
             <Link
               key={item.to}
               to={item.to}
@@ -330,16 +330,18 @@ export function TopNav({ className = "" }: { className?: string }) {
           ))}
 
           {/* Settings pushed to the far right, separate from the main tabs */}
-          <Link
-            to={settingsItem.to}
-            className="relative ml-auto whitespace-nowrap px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground data-[status=active]:text-primary"
-            activeProps={{
-              className:
-                "relative ml-auto whitespace-nowrap px-4 py-3 text-sm font-semibold text-primary after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary",
-            }}
-          >
-            {settingsItem.label}
-          </Link>
+          {canAccess(user, settingsItem.to) && (
+            <Link
+              to={settingsItem.to}
+              className="relative ml-auto whitespace-nowrap px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground data-[status=active]:text-primary"
+              activeProps={{
+                className:
+                  "relative ml-auto whitespace-nowrap px-4 py-3 text-sm font-semibold text-primary after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary",
+              }}
+            >
+              {settingsItem.label}
+            </Link>
+          )}
         </nav>
       </div>
     </header>

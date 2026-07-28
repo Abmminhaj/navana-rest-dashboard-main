@@ -15,7 +15,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { TopNav } from "../components/TopNav";
 import NotificationEngine from "../components/NotificationEngine";
 import { loadSettingsCache } from "../lib/settings-storage";
-import { isLoggedIn } from "../lib/auth-storage";
+import { getCurrentUser, canAccess, landingPageFor } from "../lib/auth-storage";
 
 function NotFoundComponent() {
   return (
@@ -129,17 +129,27 @@ function RootComponent() {
     loadSettingsCache();
   }, []);
 
-  // Login guard: bounce signed-out visitors to /login, and signed-in visitors
-  // away from /login. Re-runs on every navigation and whenever login()/logout()
-  // fire the "authUpdated" event, so it reacts immediately (no full reload needed).
+  // Login + permission guard:
+  //  - signed-out visitors are bounced to /login
+  //  - signed-in visitors are bounced away from /login
+  //  - signed-in visitors who lack permission for the current page are sent
+  //    to a page they *do* have permission for (admins always pass through)
+  // Re-runs on every navigation and whenever login()/logout() fire the
+  // "authUpdated" event, so it reacts immediately (no full reload needed).
   useEffect(() => {
     function checkAuth() {
-      const loggedIn = isLoggedIn();
-      if (!loggedIn && pathname !== "/login") {
-        navigate({ to: "/login" });
-      } else if (loggedIn && pathname === "/login") {
-        navigate({ to: "/" });
+      const user = getCurrentUser();
+
+      if (!user) {
+        if (pathname !== "/login") navigate({ to: "/login" });
+      } else if (pathname === "/login") {
+        const dest = landingPageFor(user);
+        if (dest) navigate({ to: dest as any });
+      } else if (!canAccess(user, pathname)) {
+        const dest = landingPageFor(user);
+        if (dest && dest !== pathname) navigate({ to: dest as any });
       }
+
       setChecked(true);
     }
 
@@ -148,13 +158,16 @@ function RootComponent() {
     return () => window.removeEventListener("authUpdated", checkAuth);
   }, [pathname]);
 
+  const user = getCurrentUser();
   const isLoginRoute = pathname === "/login";
-  const loggedIn = isLoggedIn();
-  const showChrome = checked && loggedIn && !isLoginRoute;
+  const hasAccess = !!user && (isLoginRoute || canAccess(user, pathname));
+  const showChrome = checked && !!user && !isLoginRoute && hasAccess;
   // Only mount the page itself once we're sure it's safe to (either it's the
-  // Login page, or we've confirmed the visitor is signed in) — this keeps
-  // protected pages from ever briefly mounting for a signed-out visitor.
-  const showOutlet = isLoginRoute || (checked && loggedIn);
+  // Login page, or we've confirmed the visitor is signed in *and* allowed to
+  // see this page) — this keeps protected pages from ever briefly mounting
+  // for a signed-out or unauthorized visitor.
+  const showOutlet = isLoginRoute || (checked && hasAccess);
+  const showNoAccess = checked && !!user && !isLoginRoute && !hasAccess;
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -169,6 +182,16 @@ function RootComponent() {
           ) : (
             <Outlet />
           ))}
+        {showNoAccess && (
+          <div className="flex min-h-screen items-center justify-center px-4 text-center">
+            <div>
+              <h1 className="text-lg font-semibold text-foreground">এই Page দেখার Permission নেই</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                কোনো page-এর Permission-ই আপনাকে দেওয়া হয়নি। Admin-কে বলুন Settings থেকে ঠিক করে দিতে।
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </QueryClientProvider>
   );

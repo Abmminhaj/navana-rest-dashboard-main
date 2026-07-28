@@ -9,6 +9,7 @@ import {
   setAdminPassword,
 } from "@/lib/settings-storage";
 import { getNotificationPermission, requestNotificationPermission } from "@/lib/notification-engine";
+import { APP_PAGES, getStaffPhone, setStaffCredentials } from "@/lib/auth-storage";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "Settings — Navana Rest House" }] }),
@@ -39,11 +40,19 @@ function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordMsg, setPasswordMsg] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editLoginPassword, setEditLoginPassword] = useState("");
+  const [editIsAdmin, setEditIsAdmin] = useState(false);
+  const [editAllowedPages, setEditAllowedPages] = useState<string[]>([]);
 
   const [showInvite, setShowInvite] = useState(false);
   const [inviteName, setInviteName] = useState("");
   const [inviteRole, setInviteRole] = useState("Receptionist");
   const [inviteEmail, setInviteEmail] = useState("");
+  const [invitePhone, setInvitePhone] = useState("");
+  const [invitePassword, setInvitePassword] = useState("");
+  const [inviteIsAdmin, setInviteIsAdmin] = useState(false);
+  const [inviteAllowedPages, setInviteAllowedPages] = useState<string[]>([]);
   const [inviteError, setInviteError] = useState("");
 
   useEffect(() => {
@@ -113,23 +122,44 @@ function SettingsPage() {
     });
   }
 
-  function startEdit(member: StaffMember) {
+  async function startEdit(member: StaffMember) {
     setEditingId(member.id);
     setEditName(member.name);
     setEditRole(member.role);
     setEditEmail(member.email);
+    setEditIsAdmin(!!member.isAdmin);
+    setEditAllowedPages(member.allowedPages || []);
+    setEditLoginPassword("");
+    setEditPhone(await getStaffPhone(member.id));
   }
 
-  function handleSaveEdit() {
+  async function handleSaveEdit() {
     if (!editingId) return;
-    updateStaffMember(editingId, { name: editName.trim(), role: editRole.trim(), email: editEmail.trim() });
+    updateStaffMember(editingId, {
+      name: editName.trim(),
+      role: editRole.trim(),
+      email: editEmail.trim(),
+      isAdmin: editIsAdmin,
+      allowedPages: editAllowedPages,
+    });
     setStaff(getStaff());
+
+    if (editPhone.trim() || editLoginPassword) {
+      await setStaffCredentials(editingId, editPhone.trim() || undefined, editLoginPassword || undefined);
+    }
+
     setEditingId(null);
+    setEditLoginPassword("");
   }
 
   function handleDeleteStaff(id: string) {
     if (staff.length <= 1) {
       alert("অন্তত একজন Staff Member থাকতেই হবে।");
+      return;
+    }
+    const target = staff.find((s) => s.id === id);
+    if (target?.isAdmin && staff.filter((s) => s.isAdmin).length <= 1) {
+      alert("অন্তত একজন Admin থাকতেই হবে।");
       return;
     }
     if (window.confirm("এই Staff Member-কে মুছে ফেলতে চান?")) {
@@ -138,17 +168,34 @@ function SettingsPage() {
     }
   }
 
-  function handleInvite() {
+  async function handleInvite() {
     if (!inviteName.trim() || !inviteEmail.trim()) {
       setInviteError("নাম আর Email দুটোই দিতে হবে।");
       return;
     }
-    addStaffMember({ name: inviteName.trim(), role: inviteRole, email: inviteEmail.trim() });
+    if (!invitePhone.trim() || invitePassword.length < 4) {
+      setInviteError("Mobile Number আর কমপক্ষে ৪ ক্যারেক্টারের Password দিতে হবে।");
+      return;
+    }
+
+    const created = addStaffMember({
+      name: inviteName.trim(),
+      role: inviteRole,
+      email: inviteEmail.trim(),
+      isAdmin: inviteIsAdmin,
+      allowedPages: inviteAllowedPages,
+    });
     setStaff(getStaff());
+    await setStaffCredentials(created.id, invitePhone.trim(), invitePassword);
+
     setShowInvite(false);
     setInviteName("");
     setInviteEmail("");
     setInviteRole("Receptionist");
+    setInvitePhone("");
+    setInvitePassword("");
+    setInviteIsAdmin(false);
+    setInviteAllowedPages([]);
     setInviteError("");
   }
 
@@ -279,13 +326,59 @@ function SettingsPage() {
             {staff.map((u) => (
               <li key={u.id} className="px-6 py-3">
                 {editingId === u.id ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
                     <input className={inputClass} value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Name" />
                     <div className="grid grid-cols-2 gap-2">
                       <input className={inputClass} value={editRole} onChange={(e) => setEditRole(e.target.value)} placeholder="Role" />
                       <input className={inputClass} value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email" />
                     </div>
-                    <div className="flex justify-end gap-2">
+
+                    <div className="border-t border-border pt-2">
+                      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Login</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input className={inputClass} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Mobile Number" />
+                        <input
+                          type="password"
+                          className={inputClass}
+                          value={editLoginPassword}
+                          onChange={(e) => setEditLoginPassword(e.target.value)}
+                          placeholder="New Password (ফাঁকা রাখলে আগেরটাই থাকবে)"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="border-t border-border pt-2">
+                      <label className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                        <input type="checkbox" checked={editIsAdmin} onChange={(e) => setEditIsAdmin(e.target.checked)} />
+                        Full Admin Access (সব Page দেখতে পারবে)
+                      </label>
+                    </div>
+
+                    {!editIsAdmin && (
+                      <div className="border-t border-border pt-2">
+                        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          কোন কোন Page দেখতে পারবে
+                        </p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {APP_PAGES.map((p) => (
+                            <label key={p.path} className="flex items-center gap-1.5 text-xs text-foreground">
+                              <input
+                                type="checkbox"
+                                checked={editAllowedPages.includes(p.path)}
+                                onChange={() =>
+                                  setEditAllowedPages((list) =>
+                                    list.includes(p.path) ? list.filter((x) => x !== p.path) : [...list, p.path]
+                                  )
+                                }
+                              />
+                              {p.label}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-2 pt-1">
                       <button onClick={() => setEditingId(null)} className={buttonGhost + " h-8 px-3 text-xs"}><X className="h-3.5 w-3.5" />Cancel</button>
                       <button onClick={handleSaveEdit} className={buttonPrimary + " h-8 px-3 text-xs"}><Check className="h-3.5 w-3.5" />Save</button>
                     </div>
@@ -326,8 +419,54 @@ function SettingsPage() {
                   </select>
                   <input className={inputClass} placeholder="Email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
                 </div>
+
+                <div className="border-t border-border pt-2">
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Login</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input className={inputClass} placeholder="Mobile Number" value={invitePhone} onChange={(e) => setInvitePhone(e.target.value)} />
+                    <input
+                      type="password"
+                      className={inputClass}
+                      placeholder="Password"
+                      value={invitePassword}
+                      onChange={(e) => setInvitePassword(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-2">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                    <input type="checkbox" checked={inviteIsAdmin} onChange={(e) => setInviteIsAdmin(e.target.checked)} />
+                    Full Admin Access (সব Page দেখতে পারবে)
+                  </label>
+                </div>
+
+                {!inviteIsAdmin && (
+                  <div className="border-t border-border pt-2">
+                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      কোন কোন Page দেখতে পারবে
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {APP_PAGES.map((p) => (
+                        <label key={p.path} className="flex items-center gap-1.5 text-xs text-foreground">
+                          <input
+                            type="checkbox"
+                            checked={inviteAllowedPages.includes(p.path)}
+                            onChange={() =>
+                              setInviteAllowedPages((list) =>
+                                list.includes(p.path) ? list.filter((x) => x !== p.path) : [...list, p.path]
+                              )
+                            }
+                          />
+                          {p.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {inviteError && <p className="text-xs font-medium text-red-500">{inviteError}</p>}
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-2 pt-1">
                   <button onClick={() => { setShowInvite(false); setInviteError(""); }} className={buttonGhost + " h-8 px-3 text-xs"}>Cancel</button>
                   <button onClick={handleInvite} className={buttonPrimary + " h-8 px-3 text-xs"}>Add Member</button>
                 </div>
@@ -342,7 +481,7 @@ function SettingsPage() {
           <SectionTitle title="Security" action={<Shield className="h-4 w-4 text-muted-foreground" />} />
           <div className="space-y-4 p-6">
             <div className="rounded-lg bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
-              Login/Password System এখনো নেই — SQLite Migration-এর সাথে যোগ হবে। এই Password শুধু Rooms Page-এ "Available → Occupied" Override করার জন্য ব্যবহার হয় (Full Security না, শুধু ভুল প্রতিরোধের জন্য)।
+              এটা Login Password থেকে আলাদা — এই Password শুধু Rooms Page-এ "Available → Occupied" Override করার জন্য ব্যবহার হয় (Full Security না, শুধু ভুল প্রতিরোধের জন্য)। Staff-দের Login Password উপরে "Users & Roles"-এ প্রতিটা staff-এর Edit থেকে বদলাতে পারবেন।
             </div>
             <Field label="New Admin Password">
               <input

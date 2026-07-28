@@ -98,12 +98,14 @@ export interface StaffMember {
   role: string;
   email: string;
   isAdmin?: boolean;
+  /** Route paths this staff member can see (ignored when isAdmin is true). */
+  allowedPages: string[];
 }
 
 const DEFAULT_STAFF: StaffMember[] = [
-  { id: "u1", name: "Arif Rahman", role: "Administrator", email: "arif@navana.com", isAdmin: true },
-  { id: "u2", name: "Sumaiya Khan", role: "Manager", email: "sumaiya@navana.com" },
-  { id: "u3", name: "Rakib Hossain", role: "Receptionist", email: "rakib@navana.com" },
+  { id: "u1", name: "Arif Rahman", role: "Administrator", email: "arif@navana.com", isAdmin: true, allowedPages: [] },
+  { id: "u2", name: "Sumaiya Khan", role: "Manager", email: "sumaiya@navana.com", allowedPages: [] },
+  { id: "u3", name: "Rakib Hossain", role: "Receptionist", email: "rakib@navana.com", allowedPages: [] },
 ];
 
 let cachedStaff: StaffMember[] = [...DEFAULT_STAFF];
@@ -115,6 +117,7 @@ function rowToStaff(row: any): StaffMember {
     role: row.role,
     email: row.email,
     isAdmin: row.is_admin || undefined,
+    allowedPages: Array.isArray(row.allowed_pages) ? row.allowed_pages : [],
   };
 }
 
@@ -123,7 +126,7 @@ export function getStaff(): StaffMember[] {
 }
 
 export function addStaffMember(member: Omit<StaffMember, "id">): StaffMember {
-  const newMember: StaffMember = { ...member, id: `u${Date.now()}` };
+  const newMember: StaffMember = { ...member, id: `u${Date.now()}`, allowedPages: member.allowedPages || [] };
   cachedStaff = [...cachedStaff, newMember];
   refreshSettings();
 
@@ -135,6 +138,7 @@ export function addStaffMember(member: Omit<StaffMember, "id">): StaffMember {
       role: newMember.role,
       email: newMember.email,
       is_admin: newMember.isAdmin || false,
+      allowed_pages: newMember.allowedPages,
     })
     .then(({ error }) => {
       if (error) console.error("addStaffMember failed:", error.message);
@@ -152,6 +156,7 @@ export function updateStaffMember(id: string, updates: Partial<StaffMember>) {
   if (updates.role !== undefined) dbUpdates.role = updates.role;
   if (updates.email !== undefined) dbUpdates.email = updates.email;
   if (updates.isAdmin !== undefined) dbUpdates.is_admin = updates.isAdmin;
+  if (updates.allowedPages !== undefined) dbUpdates.allowed_pages = updates.allowedPages;
 
   supabase
     .from("staff")
