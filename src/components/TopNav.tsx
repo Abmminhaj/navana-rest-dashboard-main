@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Bell, Search, Hotel, ChevronDown, X, BedDouble, UserRound, History } from "lucide-react";
+import { Bell, Search, Hotel, ChevronDown, X, BedDouble, UserRound, History, LogOut } from "lucide-react";
 import { getNotificationLog, markAllRead, markRead, type NotificationLogEntry } from "@/lib/notification-log-storage";
-import { getAdminFullName } from "@/lib/settings-storage";
 import { searchAll, searchResultTypeLabel, type SearchResult, type SearchResultType } from "@/lib/global-search";
+import { getCurrentUser, logout } from "@/lib/auth-storage";
 
 const navItems = [
   { to: "/", label: "Dashboard" },
@@ -235,16 +235,37 @@ function NavSearch() {
 }
 
 export function TopNav({ className = "" }: { className?: string }) {
-  const [adminName, setAdminName] = useState("Arif Rahman");
+  const navigate = useNavigate();
+  const [user, setUser] = useState(getCurrentUser());
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function loadAdmin() {
-      setAdminName(getAdminFullName() || "Arif Rahman");
+    function loadUser() {
+      setUser(getCurrentUser());
     }
-    loadAdmin();
-    window.addEventListener("settingsUpdated", loadAdmin);
-    return () => window.removeEventListener("settingsUpdated", loadAdmin);
+    loadUser();
+    window.addEventListener("authUpdated", loadUser);
+    return () => window.removeEventListener("authUpdated", loadUser);
   }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function handleLogout() {
+    logout();
+    navigate({ to: "/login" });
+  }
+
+  const displayName = user?.name || "Staff";
+  const displayRole = user?.role || "";
 
   return (
     <header className={"sticky top-0 z-40 border-b border-border bg-card/90 backdrop-blur " + className}>
@@ -263,16 +284,32 @@ export function TopNav({ className = "" }: { className?: string }) {
           <div className="flex flex-1 items-center justify-end gap-3">
             <NavSearch />
             <NotificationBell />
-            <button className="flex h-10 items-center gap-2 rounded-lg border border-border bg-background pl-1 pr-3 hover:bg-accent">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
-                {adminName.split(" ").map((p) => p[0]).join("")}
-              </div>
-              <div className="text-left leading-tight">
-                <div className="text-xs font-semibold text-foreground">{adminName}</div>
-                <div className="text-[10px] text-muted-foreground">Administrator</div>
-              </div>
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-            </button>
+            <div className="relative" ref={profileRef}>
+              <button
+                onClick={() => setProfileOpen((v) => !v)}
+                className="flex h-10 items-center gap-2 rounded-lg border border-border bg-background pl-1 pr-3 hover:bg-accent"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
+                  {displayName.split(" ").map((p) => p[0]).join("")}
+                </div>
+                <div className="text-left leading-tight">
+                  <div className="text-xs font-semibold text-foreground">{displayName}</div>
+                  <div className="text-[10px] text-muted-foreground">{displayRole}</div>
+                </div>
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+
+              {profileOpen && (
+                <div className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium text-foreground hover:bg-accent"
+                  >
+                    <LogOut className="h-4 w-4" /> Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

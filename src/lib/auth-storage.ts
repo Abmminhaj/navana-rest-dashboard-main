@@ -14,13 +14,18 @@ const SESSION_KEY = "navana_session";
 
 // Restored synchronously from localStorage on module load, so isLoggedIn()/getCurrentUser()
 // work immediately (no flicker) without waiting on a Supabase round-trip.
-let cachedUser: AuthUser | null = null;
-try {
-  const raw = localStorage.getItem(SESSION_KEY);
-  if (raw) cachedUser = JSON.parse(raw);
-} catch {
-  cachedUser = null;
+// Guarded for SSR, where `window`/`localStorage` don't exist.
+function readSession(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
 }
+
+let cachedUser: AuthUser | null = readSession();
 
 export function getCurrentUser(): AuthUser | null {
   return cachedUser;

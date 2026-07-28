@@ -4,15 +4,18 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
+  useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { TopNav } from "../components/TopNav";
 import NotificationEngine from "../components/NotificationEngine";
 import { loadSettingsCache } from "../lib/settings-storage";
+import { isLoggedIn } from "../lib/auth-storage";
 
 function NotFoundComponent() {
   return (
@@ -118,19 +121,54 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
     loadSettingsCache();
   }, []);
 
+  // Login guard: bounce signed-out visitors to /login, and signed-in visitors
+  // away from /login. Re-runs on every navigation and whenever login()/logout()
+  // fire the "authUpdated" event, so it reacts immediately (no full reload needed).
+  useEffect(() => {
+    function checkAuth() {
+      const loggedIn = isLoggedIn();
+      if (!loggedIn && pathname !== "/login") {
+        navigate({ to: "/login" });
+      } else if (loggedIn && pathname === "/login") {
+        navigate({ to: "/" });
+      }
+      setChecked(true);
+    }
+
+    checkAuth();
+    window.addEventListener("authUpdated", checkAuth);
+    return () => window.removeEventListener("authUpdated", checkAuth);
+  }, [pathname]);
+
+  const isLoginRoute = pathname === "/login";
+  const loggedIn = isLoggedIn();
+  const showChrome = checked && loggedIn && !isLoginRoute;
+  // Only mount the page itself once we're sure it's safe to (either it's the
+  // Login page, or we've confirmed the visitor is signed in) — this keeps
+  // protected pages from ever briefly mounting for a signed-out visitor.
+  const showOutlet = isLoginRoute || (checked && loggedIn);
+
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-background">
-        <NotificationEngine />
-        <TopNav className="print:hidden" />
-        <main className="mx-auto max-w-[1400px] px-6 py-8">
-          <Outlet />
-        </main>
+        {showChrome && <NotificationEngine />}
+        {showChrome && <TopNav className="print:hidden" />}
+        {showOutlet &&
+          (showChrome ? (
+            <main className="mx-auto max-w-[1400px] px-6 py-8">
+              <Outlet />
+            </main>
+          ) : (
+            <Outlet />
+          ))}
       </div>
     </QueryClientProvider>
   );

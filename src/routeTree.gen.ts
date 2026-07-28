@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RoomsRouteImport } from './routes/rooms'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as ExpensesRouteImport } from './routes/expenses'
 import { Route as CustomersRouteImport } from './routes/customers'
@@ -32,6 +33,11 @@ const RoomsRoute = RoomsRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InventoryRoute = InventoryRouteImport.update({
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/customers': typeof CustomersRoute
   '/expenses': typeof ExpensesRoute
   '/inventory': typeof InventoryRoute
+  '/login': typeof LoginRoute
   '/reports': typeof ReportsRoute
   '/rooms': typeof RoomsRoute
   '/settings': typeof SettingsRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/customers': typeof CustomersRoute
   '/expenses': typeof ExpensesRoute
   '/inventory': typeof InventoryRoute
+  '/login': typeof LoginRoute
   '/reports': typeof ReportsRoute
   '/rooms': typeof RoomsRoute
   '/settings': typeof SettingsRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/customers': typeof CustomersRoute
   '/expenses': typeof ExpensesRoute
   '/inventory': typeof InventoryRoute
+  '/login': typeof LoginRoute
   '/reports': typeof ReportsRoute
   '/rooms': typeof RoomsRoute
   '/settings': typeof SettingsRoute
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/customers'
     | '/expenses'
     | '/inventory'
+    | '/login'
     | '/reports'
     | '/rooms'
     | '/settings'
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/customers'
     | '/expenses'
     | '/inventory'
+    | '/login'
     | '/reports'
     | '/rooms'
     | '/settings'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/customers'
     | '/expenses'
     | '/inventory'
+    | '/login'
     | '/reports'
     | '/rooms'
     | '/settings'
@@ -142,6 +154,7 @@ export interface RootRouteChildren {
   CustomersRoute: typeof CustomersRoute
   ExpensesRoute: typeof ExpensesRoute
   InventoryRoute: typeof InventoryRoute
+  LoginRoute: typeof LoginRoute
   ReportsRoute: typeof ReportsRoute
   RoomsRoute: typeof RoomsRoute
   SettingsRoute: typeof SettingsRoute
@@ -168,6 +181,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inventory': {
@@ -222,6 +242,7 @@ const rootRouteChildren: RootRouteChildren = {
   CustomersRoute: CustomersRoute,
   ExpensesRoute: ExpensesRoute,
   InventoryRoute: InventoryRoute,
+  LoginRoute: LoginRoute,
   ReportsRoute: ReportsRoute,
   RoomsRoute: RoomsRoute,
   SettingsRoute: SettingsRoute,
