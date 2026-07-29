@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Save, User, BedDouble, CreditCard, Search, Upload, X } from "lucide-react";
+import { Save, User, BedDouble, CreditCard, Search, Upload, X, Camera } from "lucide-react";
 import { Card, Field, PageHeader, SectionTitle, buttonGhost, buttonPrimary, inputClass, selectClass, textareaClass } from "@/components/ui-kit";
+import { CameraCapture } from "@/components/CameraCapture";
 import { type Room } from "@/lib/mock-data";
 import { getCustomerHistory, type CustomerHistoryRecord } from "@/lib/customer-history-storage";
 import { divisions, getDistrictsByDivision, getUpazilasByDistrict } from "@/lib/bd-locations";
@@ -92,6 +93,7 @@ function BookingPage() {
   const [customerPhoto, setCustomerPhoto] = useState<string | null>(null);
   const [customerPhotoName, setCustomerPhotoName] = useState("");
   const [photoError, setPhotoError] = useState("");
+  const [cameraFor, setCameraFor] = useState<"nid" | "customer" | null>(null);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [showSuggestion, setShowSuggestion] = useState(true);
   const [previousDue, setPreviousDue] = useState(0);
@@ -140,6 +142,19 @@ function BookingPage() {
     } catch {
       setPhotoError("ছবিটি আপলোড করা যায়নি, অন্য একটি ছবি চেষ্টা করো।");
     }
+  }
+
+  function handleCameraCapture(dataUrl: string) {
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    if (cameraFor === "nid") {
+      setNidPhoto(dataUrl);
+      setNidPhotoName(`nid-camera-${stamp}.jpg`);
+    } else if (cameraFor === "customer") {
+      setCustomerPhoto(dataUrl);
+      setCustomerPhotoName(`customer-camera-${stamp}.jpg`);
+    }
+    setPhotoError("");
+    setCameraFor(null);
   }
 
   useEffect(() => {
@@ -546,18 +561,27 @@ function BookingPage() {
                 <SectionTitle title="Uploads (Optional)" />
               </div>
               <Field label="NID Photo">
-                <label className={buttonGhost + " w-full cursor-pointer justify-center"}>
-                  <Upload className="h-4 w-4" />
-                  {nidPhotoName ? "Change Photo" : "Upload NID Photo"}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) =>
-                      handlePhotoSelect(e.target.files?.[0], setNidPhoto, setNidPhotoName)
-                    }
-                  />
-                </label>
+                <div className="flex gap-2">
+                  <label className={buttonGhost + " flex-1 cursor-pointer justify-center"}>
+                    <Upload className="h-4 w-4" />
+                    {nidPhotoName ? "Change Photo" : "Upload"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) =>
+                        handlePhotoSelect(e.target.files?.[0], setNidPhoto, setNidPhotoName)
+                      }
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setCameraFor("nid")}
+                    className={buttonGhost + " flex-1 justify-center"}
+                  >
+                    <Camera className="h-4 w-4" /> Take Photo
+                  </button>
+                </div>
                 {nidPhoto && (
                   <div className="mt-2 flex items-center gap-2">
                     <img
@@ -582,18 +606,27 @@ function BookingPage() {
                 )}
               </Field>
               <Field label="Customer Photo">
-                <label className={buttonGhost + " w-full cursor-pointer justify-center"}>
-                  <Upload className="h-4 w-4" />
-                  {customerPhotoName ? "Change Photo" : "Upload Customer Photo"}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) =>
-                      handlePhotoSelect(e.target.files?.[0], setCustomerPhoto, setCustomerPhotoName)
-                    }
-                  />
-                </label>
+                <div className="flex gap-2">
+                  <label className={buttonGhost + " flex-1 cursor-pointer justify-center"}>
+                    <Upload className="h-4 w-4" />
+                    {customerPhotoName ? "Change Photo" : "Upload"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) =>
+                        handlePhotoSelect(e.target.files?.[0], setCustomerPhoto, setCustomerPhotoName)
+                      }
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setCameraFor("customer")}
+                    className={buttonGhost + " flex-1 justify-center"}
+                  >
+                    <Camera className="h-4 w-4" /> Take Photo
+                  </button>
+                </div>
                 {customerPhoto && (
                   <div className="mt-2 flex items-center gap-2">
                     <img
@@ -801,6 +834,13 @@ function BookingPage() {
           </dl>
         </Card>
       </div>
+
+      <CameraCapture
+        open={cameraFor !== null}
+        title={cameraFor === "nid" ? "NID-এর ছবি তোলো" : "Customer-এর ছবি তোলো"}
+        onClose={() => setCameraFor(null)}
+        onCapture={handleCameraCapture}
+      />
     </div>
   );
 }
