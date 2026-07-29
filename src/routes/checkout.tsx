@@ -72,6 +72,7 @@ function CheckoutPage() {
   const [checkoutDate, setCheckoutDate] = useState(new Date().toISOString().slice(0, 10));
   const [checkoutTime, setCheckoutTime] = useState(nowHHMM());
   const [paidNow, setPaidNow] = useState(0);
+  const [paidNowTouched, setPaidNowTouched] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [checkoutNotes, setCheckoutNotes] = useState("");
 
@@ -98,6 +99,7 @@ function CheckoutPage() {
     setCheckoutDate(today);
     setCheckoutTime(nowHHMM());
     setPaidNow(Math.max(0, totalDue));
+    setPaidNowTouched(false);
     setPaymentMethod("Cash");
     setCheckoutNotes("");
   }
@@ -159,6 +161,18 @@ function CheckoutPage() {
     ? stayTotal + (active.previousDue || 0) - active.advance - activeDepositsTotal
     : 0;
   const outstandingAfter = totalDue - paidNow;
+
+  // If the checkout date (and therefore total due) changes after the modal
+  // is opened, keep "Paid Now" in sync with the new full amount — but only
+  // if the staff hasn't manually typed their own Paid Now value. Otherwise
+  // a stale "Paid Now" silently leaves a due behind even though the button
+  // was left on its "pay in full" default.
+  useEffect(() => {
+    if (active && !paidNowTouched) {
+      setPaidNow(Math.max(0, totalDue));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkoutDate, active]);
 
   return (
     <>
@@ -316,7 +330,10 @@ function CheckoutPage() {
                   type="number"
                   className={inputClass}
                   value={paidNow}
-                  onChange={(e) => setPaidNow(Number(e.target.value))}
+                  onChange={(e) => {
+                    setPaidNowTouched(true);
+                    setPaidNow(Number(e.target.value));
+                  }}
                 />
               </Field>
               <Field label="Payment Method">

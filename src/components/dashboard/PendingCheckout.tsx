@@ -6,10 +6,40 @@ interface Stay {
   room: string;
   customer: string;
   remaining: number;
+  rent?: number;
+  checkIn?: string;
+  advance?: number;
+  previousDue?: number;
+  deposits?: { amount: number; date: string }[];
 }
 
 interface Props {
   activeStays: Stay[];
+}
+
+function depositsTotalOf(stay: Stay) {
+  return (stay.deposits || []).reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+}
+
+function nightsSoFar(checkIn?: string) {
+  if (!checkIn) return 1;
+  const start = new Date(checkIn).getTime();
+  const end = Date.now();
+  if (Number.isNaN(start)) return 1;
+  return Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+}
+
+// Live due = today's estimated due, factoring in any deposits paid during
+// the stay. Falls back to the frozen `remaining` if we don't have enough
+// stay detail to recompute it (e.g. older/mock data).
+function liveDueOf(stay: Stay) {
+  if (stay.rent == null || !stay.checkIn) return stay.remaining;
+  const total =
+    stay.rent * nightsSoFar(stay.checkIn) +
+    (stay.previousDue || 0) -
+    (stay.advance || 0) -
+    depositsTotalOf(stay);
+  return Math.max(0, total);
 }
 
 export default function PendingCheckout({ activeStays }: Props) {
@@ -39,7 +69,7 @@ export default function PendingCheckout({ activeStays }: Props) {
               </div>
 
               <div className="text-[11px] text-muted-foreground">
-                Remaining ৳{s.remaining.toLocaleString()}
+                Remaining ৳{liveDueOf(s).toLocaleString()}
               </div>
             </div>
 
