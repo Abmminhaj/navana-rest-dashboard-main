@@ -1,8 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Search, Printer, X, ImageOff, Wallet } from "lucide-react";
-import { Card, Field, PageHeader, SectionTitle, buttonGhost, buttonPrimary, inputClass } from "@/components/ui-kit";
-import { getCustomerHistory, parseDuePayments, recordDuePayment, type CustomerHistoryRecord } from "@/lib/customer-history-storage";
+import {
+  Card,
+  Field,
+  PageHeader,
+  SectionTitle,
+  buttonGhost,
+  buttonPrimary,
+  inputClass,
+} from "@/components/ui-kit";
+import {
+  getCustomerHistory,
+  parseDuePayments,
+  recordDuePayment,
+  type CustomerHistoryRecord,
+} from "@/lib/customer-history-storage";
 import { PrintLetterhead } from "@/components/PrintLetterhead";
 
 export const Route = createFileRoute("/customers")({
@@ -73,14 +86,14 @@ function buildProfiles(history: CustomerHistoryRecord[]): CustomerProfile[] {
 
   groups.forEach((records, key) => {
     const sorted = [...records].sort(
-      (a, b) => parseDate(b.checkoutDate) - parseDate(a.checkoutDate)
+      (a, b) => parseDate(b.checkoutDate) - parseDate(a.checkoutDate),
     );
     const latest = sorted[0];
     const nidPhoto = sorted.find((r) => r.nidPhoto)?.nidPhoto ?? null;
     const customerPhoto = sorted.find((r) => r.customerPhoto)?.customerPhoto ?? null;
     const totalSpent = sorted.reduce(
       (sum, r) => sum + (Number(r.advance) || 0) + depositsTotalOf(r) + (Number(r.remaining) || 0),
-      0
+      0,
     );
     const outstandingDue = Number(latest.due) || 0;
 
@@ -140,101 +153,111 @@ function CustomersPage() {
     row?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [highlight, profiles]);
 
- const filtered = useMemo(() => {
-  const matchesDateRange = (p: CustomerProfile) => {
-    if (!fromDate && !toDate) return true;
+  const filtered = useMemo(() => {
+    const matchesDateRange = (p: CustomerProfile) => {
+      if (!fromDate && !toDate) return true;
 
-    const visit = new Date(p.lastVisit);
-    if (fromDate && visit < new Date(fromDate)) return false;
+      const visit = new Date(p.lastVisit);
+      if (fromDate && visit < new Date(fromDate)) return false;
 
-    if (toDate) {
-      const end = new Date(toDate);
-      end.setHours(23, 59, 59, 999);
-      if (visit > end) return false;
-    }
+      if (toDate) {
+        const end = new Date(toDate);
+        end.setHours(23, 59, 59, 999);
+        if (visit > end) return false;
+      }
 
-    return true;
-  };
+      return true;
+    };
 
-  const directMatches = profiles.filter((p) => {
-    const bookingIds = p.records.map((r) => r.bookingId || "").join(" ");
-    return `${p.name} ${p.phone} ${p.nid} ${p.address} ${bookingIds}`
-      .toLowerCase()
-      .includes(query.toLowerCase()) && matchesDateRange(p) && (!showDueOnly || p.outstandingDue > 0);
-  });
+    const directMatches = profiles.filter((p) => {
+      const bookingIds = p.records.map((r) => r.bookingId || "").join(" ");
+      return (
+        `${p.name} ${p.phone} ${p.nid} ${p.address} ${bookingIds}`
+          .toLowerCase()
+          .includes(query.toLowerCase()) &&
+        matchesDateRange(p) &&
+        (!showDueOnly || p.outstandingDue > 0)
+      );
+    });
 
-  const linkedBookingIds = new Set(
-    directMatches.flatMap((profile) => profile.records.map((record) => record.bookingId).filter(Boolean)),
-  );
+    const linkedBookingIds = new Set(
+      directMatches.flatMap((profile) =>
+        profile.records.map((record) => record.bookingId).filter(Boolean),
+      ),
+    );
 
-  return profiles.filter((profile) => {
-    const isDirectMatch = directMatches.includes(profile);
-    const isLinkedGuest = profile.records.some((record) => linkedBookingIds.has(record.bookingId));
-    if (!isDirectMatch && !isLinkedGuest) return false;
-    if (!matchesDateRange(profile)) return false;
-    if (showDueOnly && profile.outstandingDue <= 0) return false;
-    return true;
-  });
-}, [profiles, query, fromDate, toDate, showDueOnly]);
+    return profiles.filter((profile) => {
+      const isDirectMatch = directMatches.includes(profile);
+      const isLinkedGuest = profile.records.some((record) =>
+        linkedBookingIds.has(record.bookingId),
+      );
+      if (!isDirectMatch && !isLinkedGuest) return false;
+      if (!matchesDateRange(profile)) return false;
+      if (showDueOnly && profile.outstandingDue <= 0) return false;
+      return true;
+    });
+  }, [profiles, query, fromDate, toDate, showDueOnly]);
 
-const totalDue = profiles.reduce((sum, profile) => sum + profile.outstandingDue, 0);
+  const totalDue = profiles.reduce((sum, profile) => sum + profile.outstandingDue, 0);
 
-async function handleDuePayment() {
-  if (!dueTarget) return;
-  const amount = Number(dueAmount);
-  if (!amount || amount <= 0) return;
-  const saved = await recordDuePayment(dueTarget, amount, dueDate, dueMethod, dueNote || undefined);
-  if (!saved) return;
-  setDueTarget(null);
-  setDueAmount("");
-  setDueNote("");
-}
+  async function handleDuePayment() {
+    if (!dueTarget) return;
+    const amount = Number(dueAmount);
+    if (!amount || amount <= 0) return;
+    const saved = await recordDuePayment(
+      dueTarget,
+      amount,
+      dueDate,
+      dueMethod,
+      dueNote || undefined,
+    );
+    if (!saved) return;
+    setDueTarget(null);
+    setDueAmount("");
+    setDueNote("");
+  }
 
-function exportExcel() {
-  const rows = filtered.flatMap((p) =>
-    p.records.map((r) => ({
-      BookingID: r.bookingId || "",
-      Name: p.name,
-      FatherName: p.fatherName || "",
-      Phone: p.phone,
-      NID: p.nid,
-      Address: p.address,
-      CustomerType: r.guestType || "",
-      Room: r.room,
-      CheckIn: r.checkIn,
-      CheckoutDate: r.checkoutDate || "",
-      Advance: r.advance || 0,
-      Deposits: depositsTotalOf(r),
-      PaidAtCheckout: r.remaining || 0,
-      Due: r.due || 0,
-      PaymentMethod: r.paymentMethod || "",
-    }))
-  );
+  function exportExcel() {
+    const rows = filtered.flatMap((p) =>
+      p.records.map((r) => ({
+        BookingID: r.bookingId || "",
+        Name: p.name,
+        FatherName: p.fatherName || "",
+        Phone: p.phone,
+        NID: p.nid,
+        Address: p.address,
+        CustomerType: r.guestType || "",
+        Room: r.room,
+        CheckIn: r.checkIn,
+        CheckoutDate: r.checkoutDate || "",
+        Advance: r.advance || 0,
+        Deposits: depositsTotalOf(r),
+        PaidAtCheckout: r.remaining || 0,
+        Due: r.due || 0,
+        PaymentMethod: r.paymentMethod || "",
+      })),
+    );
 
-  const header = Object.keys(rows[0] || {});
-  const csv = [
-    header.join(","),
-    ...rows.map((r) =>
-      header.map((h) => `"${(r as any)[h] ?? ""}"`).join(",")
-    ),
-  ].join("\n");
+    const header = Object.keys(rows[0] || {});
+    const csv = [
+      header.join(","),
+      ...rows.map((r) => header.map((h) => `"${(r as any)[h] ?? ""}"`).join(",")),
+    ].join("\n");
 
-  const blob = new Blob([csv], {
-    type: "text/csv;charset=utf-8;",
-  });
+    const blob = new Blob([csv], {
+      type: "text/csv;charset=utf-8;",
+    });
 
-  const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
 
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `Customer_Report_${new Date()
-    .toISOString()
-    .slice(0, 10)}.csv`;
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Customer_Report_${new Date().toISOString().slice(0, 10)}.csv`;
 
-  link.click();
+    link.click();
 
-  URL.revokeObjectURL(url);
-}
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div>
@@ -256,35 +279,33 @@ function exportExcel() {
               />
             </div>
             <div className="flex items-center gap-2">
-  <button
-    onClick={() => setShowDueOnly((value) => !value)}
-    className={showDueOnly ? buttonPrimary : buttonGhost}
-  >
-    <Wallet className="h-4 w-4" /> Due ৳{totalDue.toLocaleString()}
-  </button>
-  <input
-    type="date"
-    value={fromDate}
-    onChange={(e) => setFromDate(e.target.value)}
-    className={inputClass}
-  />
+              <button
+                onClick={() => setShowDueOnly((value) => !value)}
+                className={showDueOnly ? buttonPrimary : buttonGhost}
+              >
+                <Wallet className="h-4 w-4" /> Due ৳{totalDue.toLocaleString()}
+              </button>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className={inputClass}
+              />
 
-  <input
-    type="date"
-    value={toDate}
-    onChange={(e) => setToDate(e.target.value)}
-    className={inputClass}
-  />
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className={inputClass}
+              />
 
-  <button
-    onClick={exportExcel}
-    className={buttonPrimary}
-  >
-    Download Report
-  </button>
-</div>
+              <button onClick={exportExcel} className={buttonPrimary}>
+                Download Report
+              </button>
+            </div>
             <div className="text-xs text-muted-foreground">
-              Showing <span className="font-semibold text-foreground">{filtered.length}</span> of {profiles.length} guests
+              Showing <span className="font-semibold text-foreground">{filtered.length}</span> of{" "}
+              {profiles.length} guests
             </div>
           </div>
 
@@ -308,7 +329,9 @@ function exportExcel() {
                     key={p.key}
                     id={`customer-row-${p.key}`}
                     className={`border-t border-border hover:bg-muted/30 ${
-                      highlight === p.key ? "bg-primary-soft/60 ring-2 ring-inset ring-primary/40" : ""
+                      highlight === p.key
+                        ? "bg-primary-soft/60 ring-2 ring-inset ring-primary/40"
+                        : ""
                     }`}
                   >
                     <td className="px-4 py-3 text-muted-foreground">{p.lastVisit || "—"}</td>
@@ -330,11 +353,15 @@ function exportExcel() {
                     <td className="px-4 py-3 text-right font-semibold">
                       {p.outstandingDue > 0 ? (
                         <div className="flex flex-col items-end gap-1">
-                          <span className="text-amber-600">৳{p.outstandingDue.toLocaleString()}</span>
+                          <span className="text-amber-600">
+                            ৳{p.outstandingDue.toLocaleString()}
+                          </span>
                           <button
                             className="text-xs font-semibold text-primary hover:underline"
                             onClick={() => {
-                              const target = p.records.find((record) => (Number(record.due) || 0) > 0);
+                              const target = p.records.find(
+                                (record) => (Number(record.due) || 0) > 0,
+                              );
                               if (!target) return;
                               setDueTarget(target);
                               setDueAmount(String(target.due));
@@ -352,7 +379,10 @@ function exportExcel() {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-16 text-center text-sm text-muted-foreground">
+                    <td
+                      colSpan={8}
+                      className="px-4 py-16 text-center text-sm text-muted-foreground"
+                    >
                       {profiles.length === 0
                         ? "এখনো কোনো Guest Checkout সম্পন্ন হয়নি। Checkout সম্পন্ন হলে এখানে Customer History দেখা যাবে।"
                         : "No matching guests found."}
@@ -371,30 +401,59 @@ function exportExcel() {
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-lg font-bold text-foreground">Clear Customer Due</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{dueTarget.customer} · Room {dueTarget.room}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {dueTarget.customer} · Room {dueTarget.room}
+                </p>
               </div>
-              <button onClick={() => setDueTarget(null)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+              <button
+                onClick={() => setDueTarget(null)}
+                className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Current due: <span className="font-bold">৳{(Number(dueTarget.due) || 0).toLocaleString()}</span>
+              Current due:{" "}
+              <span className="font-bold">৳{(Number(dueTarget.due) || 0).toLocaleString()}</span>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               <Field label="Payment Date">
-                <input type="date" className={inputClass} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
               </Field>
               <Field label="Amount (৳)">
-                <input type="number" className={inputClass} value={dueAmount} onChange={(e) => setDueAmount(e.target.value)} />
+                <input
+                  type="number"
+                  className={inputClass}
+                  value={dueAmount}
+                  onChange={(e) => setDueAmount(e.target.value)}
+                />
               </Field>
               <Field label="Payment Method">
-                <select className={inputClass} value={dueMethod} onChange={(e) => setDueMethod(e.target.value)}>
-                  <option>Cash</option><option>bKash</option><option>Nagad</option><option>Card</option><option>Bank Transfer</option>
+                <select
+                  className={inputClass}
+                  value={dueMethod}
+                  onChange={(e) => setDueMethod(e.target.value)}
+                >
+                  <option>Cash</option>
+                  <option>bKash</option>
+                  <option>Nagad</option>
+                  <option>Card</option>
+                  <option>Bank Transfer</option>
                 </select>
               </Field>
               <div className="md:col-span-2">
                 <Field label="Note (Optional)">
-                  <input className={inputClass} placeholder="e.g. Paid from home by bKash" value={dueNote} onChange={(e) => setDueNote(e.target.value)} />
+                  <input
+                    className={inputClass}
+                    placeholder="e.g. Paid from home by bKash"
+                    value={dueNote}
+                    onChange={(e) => setDueNote(e.target.value)}
+                  />
                 </Field>
               </div>
             </div>
@@ -404,15 +463,22 @@ function exportExcel() {
                 <div className="space-y-1 text-muted-foreground">
                   {parseDuePayments(dueTarget.checkoutNotes).map((payment) => (
                     <div key={payment.id} className="flex justify-between gap-3">
-                      <span>{payment.date} · {payment.method}</span><span>৳{payment.amount.toLocaleString()}</span>
+                      <span>
+                        {payment.date} · {payment.method}
+                      </span>
+                      <span>৳{payment.amount.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
             <div className="mt-6 flex justify-end gap-2">
-              <button className={buttonGhost} onClick={() => setDueTarget(null)}>Cancel</button>
-              <button className={buttonPrimary} onClick={handleDuePayment}>Save Payment</button>
+              <button className={buttonGhost} onClick={() => setDueTarget(null)}>
+                Cancel
+              </button>
+              <button className={buttonPrimary} onClick={handleDuePayment}>
+                Save Payment
+              </button>
             </div>
           </div>
         </div>
@@ -425,16 +491,23 @@ function exportExcel() {
               <div className="flex items-start justify-between border-b border-border px-6 py-4">
                 <div>
                   <h3 className="text-base font-bold text-foreground">{selected.name}</h3>
-                  <p className="text-xs text-muted-foreground">{selected.phone} · {selected.totalStays} stay(s)</p>
+                  <p className="text-xs text-muted-foreground">
+                    {selected.phone} · {selected.totalStays} stay(s)
+                  </p>
                   {selected.outstandingDue > 0 && (
-                    <p className="mt-1 text-sm font-bold text-amber-600">⚠️ বকেয়া আছে: ৳{selected.outstandingDue.toLocaleString()}</p>
+                    <p className="mt-1 text-sm font-bold text-amber-600">
+                      ⚠️ বকেয়া আছে: ৳{selected.outstandingDue.toLocaleString()}
+                    </p>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => window.print()} className={buttonGhost}>
                     <Printer className="h-4 w-4" /> Print
                   </button>
-                  <button onClick={() => setSelected(null)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+                  <button
+                    onClick={() => setSelected(null)}
+                    className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+                  >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
@@ -444,14 +517,28 @@ function exportExcel() {
                 <div>
                   <SectionTitle title="Personal Information" />
                   <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <Field label="Full Name"><input className={inputClass} value={selected.name || ""} readOnly /></Field>
-                    <Field label="Father's Name"><input className={inputClass} value={selected.fatherName || ""} readOnly /></Field>
-                    <Field label="Phone"><input className={inputClass} value={selected.phone || ""} readOnly /></Field>
-                    <Field label="National ID"><input className={inputClass} value={selected.nid || ""} readOnly /></Field>
-                    <Field label="Profession"><input className={inputClass} value={selected.profession || ""} readOnly /></Field>
-                    <Field label="Nationality"><input className={inputClass} value={selected.nationality || ""} readOnly /></Field>
+                    <Field label="Full Name">
+                      <input className={inputClass} value={selected.name || ""} readOnly />
+                    </Field>
+                    <Field label="Father's Name">
+                      <input className={inputClass} value={selected.fatherName || ""} readOnly />
+                    </Field>
+                    <Field label="Phone">
+                      <input className={inputClass} value={selected.phone || ""} readOnly />
+                    </Field>
+                    <Field label="National ID">
+                      <input className={inputClass} value={selected.nid || ""} readOnly />
+                    </Field>
+                    <Field label="Profession">
+                      <input className={inputClass} value={selected.profession || ""} readOnly />
+                    </Field>
+                    <Field label="Nationality">
+                      <input className={inputClass} value={selected.nationality || ""} readOnly />
+                    </Field>
                     <div className="md:col-span-2">
-                      <Field label="Address"><input className={inputClass} value={selected.address || ""} readOnly /></Field>
+                      <Field label="Address">
+                        <input className={inputClass} value={selected.address || ""} readOnly />
+                      </Field>
                     </div>
                   </div>
                 </div>
@@ -462,7 +549,11 @@ function exportExcel() {
                     <div>
                       <p className="mb-1 text-xs font-medium text-muted-foreground">NID Photo</p>
                       {selected.nidPhoto ? (
-                        <img src={selected.nidPhoto} alt="NID" className="h-32 w-full rounded-lg border border-border object-cover" />
+                        <img
+                          src={selected.nidPhoto}
+                          alt="NID"
+                          className="h-32 w-full rounded-lg border border-border object-cover"
+                        />
                       ) : (
                         <div className="flex h-32 w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border text-xs text-muted-foreground">
                           <ImageOff className="h-4 w-4" /> Not uploaded
@@ -470,9 +561,15 @@ function exportExcel() {
                       )}
                     </div>
                     <div>
-                      <p className="mb-1 text-xs font-medium text-muted-foreground">Customer Photo</p>
+                      <p className="mb-1 text-xs font-medium text-muted-foreground">
+                        Customer Photo
+                      </p>
                       {selected.customerPhoto ? (
-                        <img src={selected.customerPhoto} alt="Customer" className="h-32 w-full rounded-lg border border-border object-cover" />
+                        <img
+                          src={selected.customerPhoto}
+                          alt="Customer"
+                          className="h-32 w-full rounded-lg border border-border object-cover"
+                        />
                       ) : (
                         <div className="flex h-32 w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border text-xs text-muted-foreground">
                           <ImageOff className="h-4 w-4" /> Not uploaded
@@ -488,10 +585,15 @@ function exportExcel() {
                     <div className="mt-3 space-y-2">
                       {selected.records.flatMap((record) =>
                         (record.additionalGuests || []).map((guest) => (
-                          <div key={`${record.bookingId}-${guest.id}`} className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm">
+                          <div
+                            key={`${record.bookingId}-${guest.id}`}
+                            className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm"
+                          >
                             <div>
                               <span className="font-semibold text-foreground">{guest.name}</span>
-                              <span className="ml-2 text-xs text-muted-foreground">Room {record.room}</span>
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                Room {record.room}
+                              </span>
                             </div>
                             <div className="text-right text-xs text-muted-foreground">
                               {guest.phone && <div>Phone: {guest.phone}</div>}
@@ -523,11 +625,17 @@ function exportExcel() {
                       <tbody>
                         {selected.records.map((r, i) => (
                           <tr key={i} className="border-t border-border">
-                            <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{r.bookingId || "—"}</td>
+                            <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                              {r.bookingId || "—"}
+                            </td>
                             <td className="px-3 py-2 font-semibold text-foreground">{r.room}</td>
-                            <td className="px-3 py-2 text-muted-foreground">{r.guestType || "—"}</td>
+                            <td className="px-3 py-2 text-muted-foreground">
+                              {r.guestType || "—"}
+                            </td>
                             <td className="px-3 py-2 text-muted-foreground">{r.checkIn}</td>
-                            <td className="px-3 py-2 text-muted-foreground">{r.expectedCheckOut}</td>
+                            <td className="px-3 py-2 text-muted-foreground">
+                              {r.expectedCheckOut}
+                            </td>
                             <td className="px-3 py-2 text-muted-foreground">{r.checkoutDate}</td>
                           </tr>
                         ))}
@@ -555,23 +663,38 @@ function exportExcel() {
                         {selected.records.map((r, i) => {
                           const dep = depositsTotalOf(r);
                           return (
-                          <tr key={i} className="border-t border-border">
-                            <td className="px-3 py-2 text-muted-foreground">{r.checkoutDate}</td>
-                            <td className="px-3 py-2 text-right text-foreground">৳{(Number(r.advance) || 0).toLocaleString()}</td>
-                            <td className="px-3 py-2 text-right text-foreground">৳{dep.toLocaleString()}</td>
-                            <td className="px-3 py-2 text-right text-foreground">৳{(Number(r.remaining) || 0).toLocaleString()}</td>
-                            <td className="px-3 py-2 text-right font-semibold text-foreground">
-                              ৳{((Number(r.advance) || 0) + dep + (Number(r.remaining) || 0)).toLocaleString()}
-                            </td>
-                            <td className="px-3 py-2 text-right font-semibold">
-                              {(Number(r.due) || 0) > 0 ? (
-                                <span className="text-amber-600">৳{(Number(r.due) || 0).toLocaleString()}</span>
-                              ) : (
-                                <span className="text-emerald-600">৳0</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2 text-muted-foreground">{r.paymentMethod || "—"}</td>
-                          </tr>
+                            <tr key={i} className="border-t border-border">
+                              <td className="px-3 py-2 text-muted-foreground">{r.checkoutDate}</td>
+                              <td className="px-3 py-2 text-right text-foreground">
+                                ৳{(Number(r.advance) || 0).toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2 text-right text-foreground">
+                                ৳{dep.toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2 text-right text-foreground">
+                                ৳{(Number(r.remaining) || 0).toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2 text-right font-semibold text-foreground">
+                                ৳
+                                {(
+                                  (Number(r.advance) || 0) +
+                                  dep +
+                                  (Number(r.remaining) || 0)
+                                ).toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2 text-right font-semibold">
+                                {(Number(r.due) || 0) > 0 ? (
+                                  <span className="text-amber-600">
+                                    ৳{(Number(r.due) || 0).toLocaleString()}
+                                  </span>
+                                ) : (
+                                  <span className="text-emerald-600">৳0</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-muted-foreground">
+                                {r.paymentMethod || "—"}
+                              </td>
+                            </tr>
                           );
                         })}
                       </tbody>
@@ -581,7 +704,9 @@ function exportExcel() {
                           <td className="px-3 py-2" />
                           <td className="px-3 py-2" />
                           <td className="px-3 py-2" />
-                          <td className="px-3 py-2 text-right font-bold text-primary">৳{selected.totalSpent.toLocaleString()}</td>
+                          <td className="px-3 py-2 text-right font-bold text-primary">
+                            ৳{selected.totalSpent.toLocaleString()}
+                          </td>
                           <td className="px-3 py-2" />
                           <td className="px-3 py-2" />
                         </tr>
@@ -598,12 +723,18 @@ function exportExcel() {
                         <li key={i}>
                           {r.notes && (
                             <p className="text-foreground">
-                              <span className="text-xs text-muted-foreground">[Booking, Room {r.room}]</span> {r.notes}
+                              <span className="text-xs text-muted-foreground">
+                                [Booking, Room {r.room}]
+                              </span>{" "}
+                              {r.notes}
                             </p>
                           )}
                           {r.checkoutNotes && (
                             <p className="text-foreground">
-                              <span className="text-xs text-muted-foreground">[Checkout, Room {r.room}]</span> {r.checkoutNotes}
+                              <span className="text-xs text-muted-foreground">
+                                [Checkout, Room {r.room}]
+                              </span>{" "}
+                              {r.checkoutNotes}
                             </p>
                           )}
                         </li>
@@ -621,30 +752,44 @@ function exportExcel() {
               <PrintLetterhead documentTitle="Customer Details" />
 
               <div className="mb-5">
-                <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">Personal Information</h2>
+                <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">
+                  Personal Information
+                </h2>
                 <div className="grid grid-cols-2 gap-y-1 text-sm">
-                  <span className="text-gray-600">Full Name</span><span>{selected.name || "—"}</span>
-                  <span className="text-gray-600">Father's Name</span><span>{selected.fatherName || "—"}</span>
-                  <span className="text-gray-600">Phone</span><span>{selected.phone || "—"}</span>
-                  <span className="text-gray-600">National ID</span><span>{selected.nid || "—"}</span>
-                  <span className="text-gray-600">Profession</span><span>{selected.profession || "—"}</span>
-                  <span className="text-gray-600">Nationality</span><span>{selected.nationality || "—"}</span>
+                  <span className="text-gray-600">Full Name</span>
+                  <span>{selected.name || "—"}</span>
+                  <span className="text-gray-600">Father's Name</span>
+                  <span>{selected.fatherName || "—"}</span>
+                  <span className="text-gray-600">Phone</span>
+                  <span>{selected.phone || "—"}</span>
+                  <span className="text-gray-600">National ID</span>
+                  <span>{selected.nid || "—"}</span>
+                  <span className="text-gray-600">Profession</span>
+                  <span>{selected.profession || "—"}</span>
+                  <span className="text-gray-600">Nationality</span>
+                  <span>{selected.nationality || "—"}</span>
                 </div>
               </div>
 
               <div className="mb-5">
-                <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">Address</h2>
+                <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">
+                  Address
+                </h2>
                 <p className="text-sm">{selected.address || "—"}</p>
               </div>
 
               {selected.records.some((record) => (record.additionalGuests || []).length > 0) && (
                 <div className="mb-5">
-                  <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">Additional Guests</h2>
+                  <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">
+                    Additional Guests
+                  </h2>
                   <ul className="space-y-1 text-sm">
                     {selected.records.flatMap((record) =>
                       (record.additionalGuests || []).map((guest) => (
                         <li key={`${record.bookingId}-${guest.id}`}>
-                          {guest.name}{guest.phone ? ` — Phone: ${guest.phone}` : ""}{guest.nid ? ` — NID: ${guest.nid}` : ""} (Room {record.room})
+                          {guest.name}
+                          {guest.phone ? ` — Phone: ${guest.phone}` : ""}
+                          {guest.nid ? ` — NID: ${guest.nid}` : ""} (Room {record.room})
                         </li>
                       )),
                     )}
@@ -653,7 +798,9 @@ function exportExcel() {
               )}
 
               <div className="mb-5">
-                <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">Stay Details</h2>
+                <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">
+                  Stay Details
+                </h2>
                 <table className="w-full border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-gray-400 text-left">
@@ -679,7 +826,9 @@ function exportExcel() {
               </div>
 
               <div className="mb-5">
-                <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">Payment Details</h2>
+                <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">
+                  Payment Details
+                </h2>
                 <table className="w-full border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-gray-400 text-left">
@@ -696,25 +845,44 @@ function exportExcel() {
                     {selected.records.map((r, i) => {
                       const dep = depositsTotalOf(r);
                       return (
-                      <tr key={i} className="border-b border-gray-200">
-                        <td className="py-1 pr-6">{r.checkoutDate}</td>
-                        <td className="py-1 pr-6 text-right">৳{(Number(r.advance) || 0).toLocaleString()}</td>
-                        <td className="py-1 pr-6 text-right">৳{dep.toLocaleString()}</td>
-                        <td className="py-1 pr-6 text-right">৳{(Number(r.remaining) || 0).toLocaleString()}</td>
-                        <td className="py-1 pr-6 text-right">৳{((Number(r.advance) || 0) + dep + (Number(r.remaining) || 0)).toLocaleString()}</td>
-                        <td className="py-1 pr-6 text-right">৳{(Number(r.due) || 0).toLocaleString()}</td>
-                        <td className="py-1">{r.paymentMethod || "—"}</td>
-                      </tr>
+                        <tr key={i} className="border-b border-gray-200">
+                          <td className="py-1 pr-6">{r.checkoutDate}</td>
+                          <td className="py-1 pr-6 text-right">
+                            ৳{(Number(r.advance) || 0).toLocaleString()}
+                          </td>
+                          <td className="py-1 pr-6 text-right">৳{dep.toLocaleString()}</td>
+                          <td className="py-1 pr-6 text-right">
+                            ৳{(Number(r.remaining) || 0).toLocaleString()}
+                          </td>
+                          <td className="py-1 pr-6 text-right">
+                            ৳
+                            {(
+                              (Number(r.advance) || 0) +
+                              dep +
+                              (Number(r.remaining) || 0)
+                            ).toLocaleString()}
+                          </td>
+                          <td className="py-1 pr-6 text-right">
+                            ৳{(Number(r.due) || 0).toLocaleString()}
+                          </td>
+                          <td className="py-1">{r.paymentMethod || "—"}</td>
+                        </tr>
                       );
                     })}
                   </tbody>
                   <tfoot>
                     <tr className="font-bold">
                       <td className="py-1 pr-6">Grand Total</td>
-                      <td /><td /><td />
-                      <td className="py-1 pr-6 text-right">৳{selected.totalSpent.toLocaleString()}</td>
+                      <td />
+                      <td />
+                      <td />
                       <td className="py-1 pr-6 text-right">
-                        {selected.outstandingDue > 0 ? `৳${selected.outstandingDue.toLocaleString()}` : "৳0"}
+                        ৳{selected.totalSpent.toLocaleString()}
+                      </td>
+                      <td className="py-1 pr-6 text-right">
+                        {selected.outstandingDue > 0
+                          ? `৳${selected.outstandingDue.toLocaleString()}`
+                          : "৳0"}
                       </td>
                       <td />
                     </tr>
@@ -724,12 +892,22 @@ function exportExcel() {
 
               {selected.records.some((r) => r.notes || r.checkoutNotes) && (
                 <div className="mb-5">
-                  <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">Notes</h2>
+                  <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">
+                    Notes
+                  </h2>
                   <ul className="list-disc pl-5 text-xs">
                     {selected.records.map((r, i) => (
                       <li key={i}>
-                        {r.notes && <div>Room {r.room} (Booking): {r.notes}</div>}
-                        {r.checkoutNotes && <div>Room {r.room} (Checkout): {r.checkoutNotes}</div>}
+                        {r.notes && (
+                          <div>
+                            Room {r.room} (Booking): {r.notes}
+                          </div>
+                        )}
+                        {r.checkoutNotes && (
+                          <div>
+                            Room {r.room} (Checkout): {r.checkoutNotes}
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -738,18 +916,28 @@ function exportExcel() {
 
               {(selected.nidPhoto || selected.customerPhoto) && (
                 <div className="mb-5">
-                  <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">Photos</h2>
+                  <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">
+                    Photos
+                  </h2>
                   <div className="flex gap-4">
                     {selected.nidPhoto && (
                       <div>
                         <p className="mb-1 text-xs text-gray-600">NID Photo</p>
-                        <img src={selected.nidPhoto} alt="NID" className="h-28 w-40 border border-gray-300 object-cover" />
+                        <img
+                          src={selected.nidPhoto}
+                          alt="NID"
+                          className="h-28 w-40 border border-gray-300 object-cover"
+                        />
                       </div>
                     )}
                     {selected.customerPhoto && (
                       <div>
                         <p className="mb-1 text-xs text-gray-600">Customer Photo</p>
-                        <img src={selected.customerPhoto} alt="Customer" className="h-28 w-40 border border-gray-300 object-cover" />
+                        <img
+                          src={selected.customerPhoto}
+                          alt="Customer"
+                          className="h-28 w-40 border border-gray-300 object-cover"
+                        />
                       </div>
                     )}
                   </div>

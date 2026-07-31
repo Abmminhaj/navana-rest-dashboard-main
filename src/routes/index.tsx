@@ -8,7 +8,14 @@ import RoomStatus from "@/components/dashboard/RoomStatus";
 import DashboardStats, { type StatItem } from "@/components/dashboard/DashboardStats";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  CalendarCheck, BedDouble, DoorOpen, TrendingUp, TrendingDown, Wallet, Clock, ArrowRight,
+  CalendarCheck,
+  BedDouble,
+  DoorOpen,
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  Clock,
+  ArrowRight,
 } from "lucide-react";
 import { Card, PageHeader, SectionTitle, StatusPill, buttonPrimary } from "@/components/ui-kit";
 import { type Room, type Expense } from "@/lib/mock-data";
@@ -66,7 +73,11 @@ function bookingMonthKey(bookingId: string | undefined) {
   return match ? `${match[1]}-${match[2]}` : null;
 }
 
-function useMonthlyFinancials(bookings: any[], history: CustomerHistoryRecord[], expenses: Expense[]) {
+function useMonthlyFinancials(
+  bookings: any[],
+  history: CustomerHistoryRecord[],
+  expenses: Expense[],
+) {
   return useMemo(() => {
     const months: { key: string; month: string }[] = [];
     const now = new Date();
@@ -131,13 +142,17 @@ function Dashboard() {
   }, []);
 
   const todaysBookings = useMemo(
-    () => bookings.filter((b) => typeof b.bookingId === "string" && b.bookingId.includes(`-${today.replace(/-/g, "")}-`)),
-    [bookings, today]
+    () =>
+      bookings.filter(
+        (b) =>
+          typeof b.bookingId === "string" && b.bookingId.includes(`-${today.replace(/-/g, "")}-`),
+      ),
+    [bookings, today],
   );
 
   const todaysCheckouts = useMemo(
     () => history.filter((r) => r.checkoutDate === today),
-    [history, today]
+    [history, today],
   );
 
   const occupiedCount = rooms.filter((r) => r.status === "Occupied").length;
@@ -229,7 +244,12 @@ function Dashboard() {
   }, [bookings, history]);
 
   const todayLabel = today
-    ? new Date(today).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+    ? new Date(today).toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
     : "";
 
   return (
@@ -248,13 +268,8 @@ function Dashboard() {
       <DashboardStats stats={stats} />
 
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <RoomStatus
-          rooms={rooms}
-          statusColor={statusColor}
-        />
-        <PendingCheckout
-          activeStays={activeStays}
-        />
+        <RoomStatus rooms={rooms} statusColor={statusColor} />
+        <PendingCheckout activeStays={activeStays} />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">

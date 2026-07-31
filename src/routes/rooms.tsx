@@ -64,7 +64,7 @@ function RoomsPage() {
     };
   }, []);
 
-  const [selected, setSelected] = useState<typeof rooms[number] | null>(null);
+  const [selected, setSelected] = useState<(typeof rooms)[number] | null>(null);
   const [editStatus, setEditStatus] = useState<RoomStatus>("Available");
   const [editType, setEditType] = useState("");
   const [customType, setCustomType] = useState(false);
@@ -111,14 +111,18 @@ function RoomsPage() {
 
     // Rule 1: Occupied room WITH a real booking can't change manually — must go through Checkout
     if (selected.status === "Occupied" && hasRealBooking && editStatus !== "Occupied") {
-      setOverrideError("এই Room-এ একটা Real Booking আছে। Checkout Page থেকে Checkout না করা পর্যন্ত Status পরিবর্তন করা যাবে না।");
+      setOverrideError(
+        "এই Room-এ একটা Real Booking আছে। Checkout Page থেকে Checkout না করা পর্যন্ত Status পরিবর্তন করা যাবে না।",
+      );
       return;
     }
 
     // Rule 1b: Occupied room WITHOUT a real booking (manual override) — releasing it still needs Admin Password
     if (selected.status === "Occupied" && !hasRealBooking && editStatus !== "Occupied") {
       if (!(await verifyAdminPassword(overridePassword))) {
-        setOverrideError("এই Room আগে Manual ভাবে Occupied করা হয়েছিল (কোনো Real Booking নেই)। Release করতে Admin Password দাও।");
+        setOverrideError(
+          "এই Room আগে Manual ভাবে Occupied করা হয়েছিল (কোনো Real Booking নেই)। Release করতে Admin Password দাও।",
+        );
         return;
       }
     }
@@ -157,9 +161,7 @@ function RoomsPage() {
       alert("এই Room-এ এখন Guest আছে। আগে Checkout করাও, তারপর Room Delete করতে পারবে।");
       return;
     }
-    const ok = window.confirm(
-      `Room ${selected.number} মুছে ফেলতে চাও? এই কাজ Undo করা যাবে না।`
-    );
+    const ok = window.confirm(`Room ${selected.number} মুছে ফেলতে চাও? এই কাজ Undo করা যাবে না।`);
     if (!ok) return;
     await deleteRoom(selected.number);
     setSelected(null);
@@ -265,21 +267,29 @@ function RoomsPage() {
         <Stat label="Total Rooms" value={summary.total} accent="bg-primary-soft text-primary" />
         <Stat label="Occupied" value={summary.Occupied} accent="bg-rose-50 text-rose-700" />
         <Stat label="Available" value={summary.Available} accent="bg-emerald-50 text-emerald-700" />
-        <Stat label="Maintenance" value={summary.Maintenance} accent="bg-slate-100 text-slate-700" />
+        <Stat
+          label="Maintenance"
+          value={summary.Maintenance}
+          accent="bg-slate-100 text-slate-700"
+        />
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
-        {(["All", "Available", "Occupied", "Reserved", "Cleaning", "Maintenance"] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-              filter === f ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {f}
-          </button>
-        ))}
+        {(["All", "Available", "Occupied", "Reserved", "Cleaning", "Maintenance"] as const).map(
+          (f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                filter === f
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {f}
+            </button>
+          ),
+        )}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -326,19 +336,30 @@ function RoomsPage() {
                     className={`group rounded-xl border p-4 text-left transition ${s.bg}`}
                   >
                     <div className="flex items-start justify-between">
-                      <div className={`text-2xl font-bold ${getRoomTypeColor(r.type)}`}>{r.number}</div>
+                      <div className={`text-2xl font-bold ${getRoomTypeColor(r.type)}`}>
+                        {r.number}
+                      </div>
                       <span className={`h-2.5 w-2.5 rounded-full ${s.dot}`} />
                     </div>
-                    <div className="mt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{r.type}</div>
+                    <div className="mt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {r.type}
+                    </div>
                     {(r.amenities || []).length > 0 && (
-                      <div className="mt-1 truncate text-[11px] text-muted-foreground" title={(r.amenities || []).join(", ")}>
+                      <div
+                        className="mt-1 truncate text-[11px] text-muted-foreground"
+                        title={(r.amenities || []).join(", ")}
+                      >
                         {(r.amenities || []).slice(0, 3).join(" · ")}
-                        {(r.amenities || []).length > 3 ? ` +${(r.amenities || []).length - 3}` : ""}
+                        {(r.amenities || []).length > 3
+                          ? ` +${(r.amenities || []).length - 3}`
+                          : ""}
                       </div>
                     )}
                     <div className="mt-3 flex items-center justify-between">
                       <StatusPill tone={s.tone}>{r.status}</StatusPill>
-                      <span className="text-xs font-semibold text-foreground">৳{r.rent.toLocaleString()}</span>
+                      <span className="text-xs font-semibold text-foreground">
+                        ৳{r.rent.toLocaleString()}
+                      </span>
                     </div>
                   </button>
                 );
@@ -358,10 +379,15 @@ function RoomsPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-foreground">Room {selected.number}</h3>
-                  <p className="text-xs text-muted-foreground">{selected.type} · Floor {selected.floor}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {selected.type} · Floor {selected.floor}
+                  </p>
                 </div>
               </div>
-              <button onClick={() => setSelected(null)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+              <button
+                onClick={() => setSelected(null)}
+                className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -384,7 +410,9 @@ function RoomsPage() {
                     className="w-full rounded-lg border border-border bg-background px-3 py-2"
                   >
                     {ROOM_TYPE_PRESETS.map((t) => (
-                      <option key={t} value={t}>{t}</option>
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
                     ))}
                     <option value="__custom__">Custom (নিজে লিখুন)</option>
                   </select>
@@ -409,9 +437,7 @@ function RoomsPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Room Status
-                </label>
+                <label className="text-sm font-medium text-foreground">Room Status</label>
                 {selected.status === "Occupied" && hasRealBooking ? (
                   <>
                     <input
@@ -420,7 +446,8 @@ function RoomsPage() {
                       className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-muted-foreground"
                     />
                     <p className="text-xs text-amber-600">
-                      এই Room-এ Guest Check-in আছে। Status পরিবর্তন করতে হলে Checkout Page থেকে Checkout করাও।
+                      এই Room-এ Guest Check-in আছে। Status পরিবর্তন করতে হলে Checkout Page থেকে
+                      Checkout করাও।
                     </p>
                   </>
                 ) : (
@@ -444,7 +471,8 @@ function RoomsPage() {
               {selected.status === "Occupied" && !hasRealBooking && editStatus !== "Occupied" && (
                 <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
                   <p className="text-xs font-semibold text-amber-800">
-                    ⚠️ এই Room আগে Manual ভাবে Occupied করা হয়েছিল, কোনো Real Booking নেই। Release করতে Admin Password দাও:
+                    ⚠️ এই Room আগে Manual ভাবে Occupied করা হয়েছিল, কোনো Real Booking নেই। Release
+                    করতে Admin Password দাও:
                   </p>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground">Admin Password</label>
@@ -462,10 +490,13 @@ function RoomsPage() {
               {selected.status !== "Occupied" && editStatus === "Occupied" && (
                 <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
                   <p className="text-xs font-semibold text-amber-800">
-                    ⚠️ সরাসরি Available থেকে Occupied করছো — সাধারণত এটা Booking Page দিয়ে হওয়া উচিত। যদি নিশ্চিত থাকো, নিচে দাও:
+                    ⚠️ সরাসরি Available থেকে Occupied করছো — সাধারণত এটা Booking Page দিয়ে হওয়া
+                    উচিত। যদি নিশ্চিত থাকো, নিচে দাও:
                   </p>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Special Note (কেন Manual করা হলো)</label>
+                    <label className="text-sm font-medium text-foreground">
+                      Special Note (কেন Manual করা হলো)
+                    </label>
                     <textarea
                       value={overrideNote}
                       onChange={(e) => setOverrideNote(e.target.value)}
@@ -487,14 +518,10 @@ function RoomsPage() {
                 </div>
               )}
 
-              {overrideError && (
-                <p className="text-xs font-medium text-red-600">{overrideError}</p>
-              )}
+              {overrideError && <p className="text-xs font-medium text-red-600">{overrideError}</p>}
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Notes
-                </label>
+                <label className="text-sm font-medium text-foreground">Notes</label>
                 <textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
@@ -505,10 +532,15 @@ function RoomsPage() {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-foreground">Amenities / Facilities</label>
+                <label className="text-sm font-medium text-foreground">
+                  Amenities / Facilities
+                </label>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {editAmenities.map((a) => (
-                    <span key={a} className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground">
+                    <span
+                      key={a}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground"
+                    >
                       {a}
                       <button
                         type="button"
@@ -520,7 +552,9 @@ function RoomsPage() {
                     </span>
                   ))}
                   {editAmenities.length === 0 && (
-                    <span className="text-xs text-muted-foreground">এখনো কোনো Amenity যোগ করা হয়নি</span>
+                    <span className="text-xs text-muted-foreground">
+                      এখনো কোনো Amenity যোগ করা হয়নি
+                    </span>
                   )}
                 </div>
                 <div className="mt-3 flex gap-2">
@@ -555,10 +589,7 @@ function RoomsPage() {
                 <Trash2 className="h-4 w-4" /> Delete Room
               </button>
               <div className="flex gap-2">
-                <button
-                  onClick={() => setSelected(null)}
-                  className={buttonGhost}
-                >
+                <button onClick={() => setSelected(null)} className={buttonGhost}>
                   Close
                 </button>
                 <button
@@ -578,13 +609,17 @@ function RoomsPage() {
           <div className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl">
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <h3 className="text-base font-bold text-foreground">Reset to Default 25 Rooms</h3>
-              <button onClick={() => setShowResetModal(false)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+              <button
+                onClick={() => setShowResetModal(false)}
+                className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="space-y-3 p-6">
               <p className="text-xs text-muted-foreground">
-                এটি বর্তমান সব Room-এর Status/Type/Amenities মুছে দিয়ে আসল ২৫টা Room (101-109, 201-216) দিয়ে নতুন করে শুরু করবে। এই কাজ শুধুমাত্র Admin করতে পারবে।
+                এটি বর্তমান সব Room-এর Status/Type/Amenities মুছে দিয়ে আসল ২৫টা Room (101-109,
+                201-216) দিয়ে নতুন করে শুরু করবে। এই কাজ শুধুমাত্র Admin করতে পারবে।
               </p>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Admin Password</label>
@@ -601,7 +636,9 @@ function RoomsPage() {
               {resetError && <p className="text-xs font-medium text-red-600">{resetError}</p>}
             </div>
             <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
-              <button onClick={() => setShowResetModal(false)} className={buttonGhost}>Cancel</button>
+              <button onClick={() => setShowResetModal(false)} className={buttonGhost}>
+                Cancel
+              </button>
               <button
                 onClick={handleConfirmReset}
                 className="rounded-lg bg-destructive px-5 py-2 font-semibold text-destructive-foreground transition hover:opacity-90"
@@ -671,7 +708,9 @@ function RoomsPage() {
                   className="w-full rounded-lg border border-border bg-background px-3 py-2"
                 >
                   {ROOM_TYPE_PRESETS.map((t) => (
-                    <option key={t} value={t}>{t}</option>
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
                   ))}
                   <option value="__custom__">Custom (নিজে লিখুন)</option>
                 </select>
@@ -707,7 +746,9 @@ function RoomsPage() {
 function Stat({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
     <Card className="p-5">
-      <div className={`inline-flex rounded-lg px-2 py-1 text-[11px] font-semibold ${accent}`}>{label}</div>
+      <div className={`inline-flex rounded-lg px-2 py-1 text-[11px] font-semibold ${accent}`}>
+        {label}
+      </div>
       <div className="mt-3 text-3xl font-bold text-foreground">{value}</div>
     </Card>
   );

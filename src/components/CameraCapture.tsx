@@ -66,7 +66,7 @@ export function CameraCapture({ open, title, onClose, onCapture }: CameraCapture
       } catch (err) {
         console.error("Camera access failed:", err);
         setError(
-          "ক্যামেরা চালু করা যায়নি। ব্রাউজারে ক্যামেরা পারমিশন দেওয়া আছে কিনা দেখো, অথবা ফাইল আপলোড ব্যবহার করো।"
+          "ক্যামেরা চালু করা যায়নি। ব্রাউজারে ক্যামেরা পারমিশন দেওয়া আছে কিনা দেখো, অথবা ফাইল আপলোড ব্যবহার করো।",
         );
       }
     }
@@ -142,11 +142,7 @@ export function CameraCapture({ open, title, onClose, onCapture }: CameraCapture
 
         <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
           {!error && captured && (
-            <button
-              type="button"
-              onClick={() => setCaptured(null)}
-              className={buttonGhost}
-            >
+            <button type="button" onClick={() => setCaptured(null)} className={buttonGhost}>
               <RotateCcw className="h-4 w-4" /> আবার তোলো
             </button>
           )}

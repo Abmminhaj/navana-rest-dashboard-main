@@ -28,13 +28,9 @@ export default function DashboardStats({ stats }: Props) {
             {s.label}
           </div>
 
-          <div className="mt-1 text-2xl font-bold text-foreground">
-            {s.value}
-          </div>
+          <div className="mt-1 text-2xl font-bold text-foreground">{s.value}</div>
 
-          <div className="mt-1 text-[11px] text-muted-foreground">
-            {s.delta}
-          </div>
+          <div className="mt-1 text-[11px] text-muted-foreground">{s.delta}</div>
         </Card>
       ))}
     </div>

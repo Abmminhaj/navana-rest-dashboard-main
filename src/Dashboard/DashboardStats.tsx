@@ -1,4 +1,12 @@
-import { CalendarCheck, BedDouble, DoorOpen, TrendingUp, TrendingDown, Wallet, Clock } from "lucide-react";
+import {
+  CalendarCheck,
+  BedDouble,
+  DoorOpen,
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  Clock,
+} from "lucide-react";
 import { Card } from "@/components/ui-kit";
 
 const stats = [
@@ -68,13 +76,9 @@ export default function DashboardStats() {
             {s.label}
           </div>
 
-          <div className="mt-1 text-2xl font-bold text-foreground">
-            {s.value}
-          </div>
+          <div className="mt-1 text-2xl font-bold text-foreground">{s.value}</div>
 
-          <div className="mt-1 text-[11px] text-muted-foreground">
-            {s.delta}
-          </div>
+          <div className="mt-1 text-[11px] text-muted-foreground">{s.delta}</div>
         </Card>
       ))}
     </div>

@@ -42,7 +42,10 @@ function rowToRoom(row: any): Room {
 }
 
 export async function getRooms(): Promise<Room[]> {
-  const { data, error } = await supabase.from("rooms").select("*").order("number", { ascending: true });
+  const { data, error } = await supabase
+    .from("rooms")
+    .select("*")
+    .order("number", { ascending: true });
   if (error) {
     console.error("getRooms failed:", error.message);
     return [];

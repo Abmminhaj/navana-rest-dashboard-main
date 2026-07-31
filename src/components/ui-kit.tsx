@@ -39,13 +39,7 @@ export function Card({
   );
 }
 
-export function SectionTitle({
-  title,
-  action,
-}: {
-  title: string;
-  action?: ReactNode;
-}) {
+export function SectionTitle({ title, action }: { title: string; action?: ReactNode }) {
   return (
     <div className="flex items-center justify-between border-b border-border px-6 py-4">
       <h2 className="text-sm font-semibold text-foreground">{title}</h2>

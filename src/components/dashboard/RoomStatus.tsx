@@ -13,13 +13,7 @@ interface Props {
   statusColor: Record<string, string>;
 }
 
-function Legend({
-  swatch,
-  label,
-}: {
-  swatch: string;
-  label: string;
-}) {
+function Legend({ swatch, label }: { swatch: string; label: string }) {
   return (
     <div className="flex items-center gap-1">
       <span className={`h-2 w-2 rounded-full ${swatch}`} />
@@ -51,9 +45,7 @@ export default function RoomStatus({ rooms, statusColor }: Props) {
             >
               <div className={`text-lg font-bold ${getRoomTypeColor(r.type)}`}>{r.number}</div>
 
-              <div className="mt-1 text-[10px] uppercase opacity-80">
-                {r.type}
-              </div>
+              <div className="mt-1 text-[10px] uppercase opacity-80">{r.type}</div>
 
               {(r.amenities || []).length > 0 && (
                 <div
@@ -65,9 +57,7 @@ export default function RoomStatus({ rooms, statusColor }: Props) {
                 </div>
               )}
 
-              <div className="mt-2 text-[11px] font-semibold">
-                {r.status}
-              </div>
+              <div className="mt-2 text-[11px] font-semibold">{r.status}</div>
             </div>
           ))}
         </div>

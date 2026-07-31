@@ -57,7 +57,10 @@ export async function deleteExpenseCategory(name: string): Promise<string[]> {
 }
 
 export async function resetExpenseCategoriesToDefault(): Promise<string[]> {
-  const { error: delErr } = await supabase.from("expense_categories").delete().neq("name", "__none__");
+  const { error: delErr } = await supabase
+    .from("expense_categories")
+    .delete()
+    .neq("name", "__none__");
   if (delErr) console.error("reset delete failed:", delErr.message);
 
   const { error } = await supabase

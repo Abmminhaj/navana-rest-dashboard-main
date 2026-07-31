@@ -1,14 +1,34 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Card, Field, PageHeader, SectionTitle, buttonGhost, buttonPrimary, inputClass, selectClass } from "@/components/ui-kit";
+import {
+  Card,
+  Field,
+  PageHeader,
+  SectionTitle,
+  buttonGhost,
+  buttonPrimary,
+  inputClass,
+  selectClass,
+} from "@/components/ui-kit";
 import { Building2, Users, Bell, Shield, Pencil, Trash2, Check, X, Plus } from "lucide-react";
 import {
-  getHotelProfile, saveHotelProfile, type HotelProfile,
-  getNotificationPrefs, saveNotificationPrefs, type NotificationPrefs,
-  getStaff, addStaffMember, updateStaffMember, deleteStaffMember, type StaffMember,
+  getHotelProfile,
+  saveHotelProfile,
+  type HotelProfile,
+  getNotificationPrefs,
+  saveNotificationPrefs,
+  type NotificationPrefs,
+  getStaff,
+  addStaffMember,
+  updateStaffMember,
+  deleteStaffMember,
+  type StaffMember,
   setAdminPassword,
 } from "@/lib/settings-storage";
-import { getNotificationPermission, requestNotificationPermission } from "@/lib/notification-engine";
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+} from "@/lib/notification-engine";
 import { APP_PAGES, getStaffPhone, setStaffCredentials } from "@/lib/auth-storage";
 
 export const Route = createFileRoute("/settings")({
@@ -17,12 +37,28 @@ export const Route = createFileRoute("/settings")({
 });
 
 const NOTIFICATION_ITEMS: { key: keyof NotificationPrefs; label: string; desc: string }[] = [
-  { key: "checkInAlerts", label: "Occupied room alerts", desc: "Instant notification when a room becomes occupied" },
-  { key: "checkOutAlerts", label: "Check-out alerts", desc: "Instant notification when a guest checks out" },
-  { key: "pendingCheckoutAlerts", label: "Pending checkout alerts", desc: "Notify 1 hour before expected checkout" },
+  {
+    key: "checkInAlerts",
+    label: "Occupied room alerts",
+    desc: "Instant notification when a room becomes occupied",
+  },
+  {
+    key: "checkOutAlerts",
+    label: "Check-out alerts",
+    desc: "Instant notification when a guest checks out",
+  },
+  {
+    key: "pendingCheckoutAlerts",
+    label: "Pending checkout alerts",
+    desc: "Notify 1 hour before expected checkout",
+  },
   { key: "lowOccupancyAlerts", label: "Low occupancy alerts", desc: "Daily summary at 9:00 AM" },
   { key: "paymentReceivedAlerts", label: "Payment received alerts", desc: "Instant notification" },
-  { key: "maintenanceReminders", label: "Maintenance reminders", desc: "Weekly room maintenance checklist" },
+  {
+    key: "maintenanceReminders",
+    label: "Maintenance reminders",
+    desc: "Weekly room maintenance checklist",
+  },
 ];
 
 function SettingsPage() {
@@ -145,7 +181,11 @@ function SettingsPage() {
     setStaff(getStaff());
 
     if (editPhone.trim() || editLoginPassword) {
-      await setStaffCredentials(editingId, editPhone.trim() || undefined, editLoginPassword || undefined);
+      await setStaffCredentials(
+        editingId,
+        editPhone.trim() || undefined,
+        editLoginPassword || undefined,
+      );
     }
 
     setEditingId(null);
@@ -218,14 +258,24 @@ function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Settings" description="Manage hotel profile, users and system preferences." />
+      <PageHeader
+        title="Settings"
+        description="Manage hotel profile, users and system preferences."
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
-          <SectionTitle title="Hotel Profile" action={<Building2 className="h-4 w-4 text-muted-foreground" />} />
+          <SectionTitle
+            title="Hotel Profile"
+            action={<Building2 className="h-4 w-4 text-muted-foreground" />}
+          />
           <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
             <Field label="Hotel Name">
-              <input className={inputClass} value={profile.hotelName} onChange={(e) => handleProfileChange("hotelName", e.target.value)} />
+              <input
+                className={inputClass}
+                value={profile.hotelName}
+                onChange={(e) => handleProfileChange("hotelName", e.target.value)}
+              />
             </Field>
             <div>
               <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -262,39 +312,69 @@ function SettingsPage() {
             </div>
             <div className="md:col-span-2">
               <Field label="Address">
-                <input className={inputClass} value={profile.address} onChange={(e) => handleProfileChange("address", e.target.value)} />
+                <input
+                  className={inputClass}
+                  value={profile.address}
+                  onChange={(e) => handleProfileChange("address", e.target.value)}
+                />
               </Field>
             </div>
             <Field label="Currency">
-              <select className={selectClass} value={profile.currency} onChange={(e) => handleProfileChange("currency", e.target.value)}>
+              <select
+                className={selectClass}
+                value={profile.currency}
+                onChange={(e) => handleProfileChange("currency", e.target.value)}
+              >
                 <option>BDT (৳)</option>
                 <option>USD ($)</option>
               </select>
             </Field>
             <Field label="Timezone">
-              <select className={selectClass} value={profile.timezone} onChange={(e) => handleProfileChange("timezone", e.target.value)}>
+              <select
+                className={selectClass}
+                value={profile.timezone}
+                onChange={(e) => handleProfileChange("timezone", e.target.value)}
+              >
                 <option>Asia/Dhaka (GMT+6)</option>
               </select>
             </Field>
             <div className="md:col-span-2 flex items-center gap-3">
-              <button className={buttonPrimary} onClick={handleSaveProfile}>Save Changes</button>
-              {profileSaved && <span className="text-xs font-semibold text-emerald-600">✓ Saved</span>}
+              <button className={buttonPrimary} onClick={handleSaveProfile}>
+                Save Changes
+              </button>
+              {profileSaved && (
+                <span className="text-xs font-semibold text-emerald-600">✓ Saved</span>
+              )}
             </div>
           </div>
         </Card>
 
         <Card>
-          <SectionTitle title="Notifications" action={<Bell className="h-4 w-4 text-muted-foreground" />} />
+          <SectionTitle
+            title="Notifications"
+            action={<Bell className="h-4 w-4 text-muted-foreground" />}
+          />
 
           <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-3">
             {permission === "granted" ? (
-              <span className="text-xs font-semibold text-emerald-600">✓ Browser Notifications চালু আছে</span>
+              <span className="text-xs font-semibold text-emerald-600">
+                ✓ Browser Notifications চালু আছে
+              </span>
             ) : permission === "denied" ? (
-              <span className="text-xs font-semibold text-red-500">Browser-এ Notification Block করা আছে — Browser Settings থেকে Allow করতে হবে</span>
+              <span className="text-xs font-semibold text-red-500">
+                Browser-এ Notification Block করা আছে — Browser Settings থেকে Allow করতে হবে
+              </span>
             ) : (
               <>
-                <span className="text-xs text-muted-foreground">Real Notification পেতে Browser Permission দরকার</span>
-                <button onClick={handleEnableNotifications} className={buttonPrimary + " h-8 px-3 text-xs"}>Enable Notifications</button>
+                <span className="text-xs text-muted-foreground">
+                  Real Notification পেতে Browser Permission দরকার
+                </span>
+                <button
+                  onClick={handleEnableNotifications}
+                  className={buttonPrimary + " h-8 px-3 text-xs"}
+                >
+                  Enable Notifications
+                </button>
               </>
             )}
           </div>
@@ -321,22 +401,47 @@ function SettingsPage() {
         </Card>
 
         <Card>
-          <SectionTitle title="Users & Roles" action={<Users className="h-4 w-4 text-muted-foreground" />} />
+          <SectionTitle
+            title="Users & Roles"
+            action={<Users className="h-4 w-4 text-muted-foreground" />}
+          />
           <ul className="divide-y divide-border">
             {staff.map((u) => (
               <li key={u.id} className="px-6 py-3">
                 {editingId === u.id ? (
                   <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
-                    <input className={inputClass} value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Name" />
+                    <input
+                      className={inputClass}
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Name"
+                    />
                     <div className="grid grid-cols-2 gap-2">
-                      <input className={inputClass} value={editRole} onChange={(e) => setEditRole(e.target.value)} placeholder="Role" />
-                      <input className={inputClass} value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email" />
+                      <input
+                        className={inputClass}
+                        value={editRole}
+                        onChange={(e) => setEditRole(e.target.value)}
+                        placeholder="Role"
+                      />
+                      <input
+                        className={inputClass}
+                        value={editEmail}
+                        onChange={(e) => setEditEmail(e.target.value)}
+                        placeholder="Email"
+                      />
                     </div>
 
                     <div className="border-t border-border pt-2">
-                      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Login</p>
+                      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Login
+                      </p>
                       <div className="grid grid-cols-2 gap-2">
-                        <input className={inputClass} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Mobile Number" />
+                        <input
+                          className={inputClass}
+                          value={editPhone}
+                          onChange={(e) => setEditPhone(e.target.value)}
+                          placeholder="Mobile Number"
+                        />
                         <input
                           type="password"
                           className={inputClass}
@@ -349,7 +454,11 @@ function SettingsPage() {
 
                     <div className="border-t border-border pt-2">
                       <label className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                        <input type="checkbox" checked={editIsAdmin} onChange={(e) => setEditIsAdmin(e.target.checked)} />
+                        <input
+                          type="checkbox"
+                          checked={editIsAdmin}
+                          onChange={(e) => setEditIsAdmin(e.target.checked)}
+                        />
                         Full Admin Access (সব Page দেখতে পারবে)
                       </label>
                     </div>
@@ -361,13 +470,18 @@ function SettingsPage() {
                         </p>
                         <div className="grid grid-cols-2 gap-1.5">
                           {APP_PAGES.map((p) => (
-                            <label key={p.path} className="flex items-center gap-1.5 text-xs text-foreground">
+                            <label
+                              key={p.path}
+                              className="flex items-center gap-1.5 text-xs text-foreground"
+                            >
                               <input
                                 type="checkbox"
                                 checked={editAllowedPages.includes(p.path)}
                                 onChange={() =>
                                   setEditAllowedPages((list) =>
-                                    list.includes(p.path) ? list.filter((x) => x !== p.path) : [...list, p.path]
+                                    list.includes(p.path)
+                                      ? list.filter((x) => x !== p.path)
+                                      : [...list, p.path],
                                   )
                                 }
                               />
@@ -379,26 +493,54 @@ function SettingsPage() {
                     )}
 
                     <div className="flex justify-end gap-2 pt-1">
-                      <button onClick={() => setEditingId(null)} className={buttonGhost + " h-8 px-3 text-xs"}><X className="h-3.5 w-3.5" />Cancel</button>
-                      <button onClick={handleSaveEdit} className={buttonPrimary + " h-8 px-3 text-xs"}><Check className="h-3.5 w-3.5" />Save</button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className={buttonGhost + " h-8 px-3 text-xs"}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSaveEdit}
+                        className={buttonPrimary + " h-8 px-3 text-xs"}
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        Save
+                      </button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-soft text-xs font-bold text-primary">
-                      {u.name.split(" ").map((p) => p[0]).join("")}
+                      {u.name
+                        .split(" ")
+                        .map((p) => p[0])
+                        .join("")}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-semibold text-foreground">
-                        {u.name} {u.isAdmin && <span className="ml-1 text-[10px] font-semibold text-primary">(You)</span>}
+                        {u.name}{" "}
+                        {u.isAdmin && (
+                          <span className="ml-1 text-[10px] font-semibold text-primary">(You)</span>
+                        )}
                       </div>
                       <div className="text-[11px] text-muted-foreground">{u.email}</div>
                     </div>
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">{u.role}</span>
-                    <button onClick={() => startEdit(u)} className="text-muted-foreground hover:text-foreground" title="Edit">
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
+                      {u.role}
+                    </span>
+                    <button
+                      onClick={() => startEdit(u)}
+                      className="text-muted-foreground hover:text-foreground"
+                      title="Edit"
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
-                    <button onClick={() => handleDeleteStaff(u.id)} className="text-muted-foreground hover:text-red-500" title="Remove">
+                    <button
+                      onClick={() => handleDeleteStaff(u.id)}
+                      className="text-muted-foreground hover:text-red-500"
+                      title="Remove"
+                    >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -410,20 +552,41 @@ function SettingsPage() {
           <div className="border-t border-border p-4">
             {showInvite ? (
               <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
-                <input className={inputClass} placeholder="Name" value={inviteName} onChange={(e) => setInviteName(e.target.value)} />
+                <input
+                  className={inputClass}
+                  placeholder="Name"
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                />
                 <div className="grid grid-cols-2 gap-2">
-                  <select className={selectClass} value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
+                  <select
+                    className={selectClass}
+                    value={inviteRole}
+                    onChange={(e) => setInviteRole(e.target.value)}
+                  >
                     <option>Administrator</option>
                     <option>Manager</option>
                     <option>Receptionist</option>
                   </select>
-                  <input className={inputClass} placeholder="Email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
+                  <input
+                    className={inputClass}
+                    placeholder="Email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                  />
                 </div>
 
                 <div className="border-t border-border pt-2">
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Login</p>
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Login
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
-                    <input className={inputClass} placeholder="Mobile Number" value={invitePhone} onChange={(e) => setInvitePhone(e.target.value)} />
+                    <input
+                      className={inputClass}
+                      placeholder="Mobile Number"
+                      value={invitePhone}
+                      onChange={(e) => setInvitePhone(e.target.value)}
+                    />
                     <input
                       type="password"
                       className={inputClass}
@@ -436,7 +599,11 @@ function SettingsPage() {
 
                 <div className="border-t border-border pt-2">
                   <label className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                    <input type="checkbox" checked={inviteIsAdmin} onChange={(e) => setInviteIsAdmin(e.target.checked)} />
+                    <input
+                      type="checkbox"
+                      checked={inviteIsAdmin}
+                      onChange={(e) => setInviteIsAdmin(e.target.checked)}
+                    />
                     Full Admin Access (সব Page দেখতে পারবে)
                   </label>
                 </div>
@@ -448,13 +615,18 @@ function SettingsPage() {
                     </p>
                     <div className="grid grid-cols-2 gap-1.5">
                       {APP_PAGES.map((p) => (
-                        <label key={p.path} className="flex items-center gap-1.5 text-xs text-foreground">
+                        <label
+                          key={p.path}
+                          className="flex items-center gap-1.5 text-xs text-foreground"
+                        >
                           <input
                             type="checkbox"
                             checked={inviteAllowedPages.includes(p.path)}
                             onChange={() =>
                               setInviteAllowedPages((list) =>
-                                list.includes(p.path) ? list.filter((x) => x !== p.path) : [...list, p.path]
+                                list.includes(p.path)
+                                  ? list.filter((x) => x !== p.path)
+                                  : [...list, p.path],
                               )
                             }
                           />
@@ -467,21 +639,38 @@ function SettingsPage() {
 
                 {inviteError && <p className="text-xs font-medium text-red-500">{inviteError}</p>}
                 <div className="flex justify-end gap-2 pt-1">
-                  <button onClick={() => { setShowInvite(false); setInviteError(""); }} className={buttonGhost + " h-8 px-3 text-xs"}>Cancel</button>
-                  <button onClick={handleInvite} className={buttonPrimary + " h-8 px-3 text-xs"}>Add Member</button>
+                  <button
+                    onClick={() => {
+                      setShowInvite(false);
+                      setInviteError("");
+                    }}
+                    className={buttonGhost + " h-8 px-3 text-xs"}
+                  >
+                    Cancel
+                  </button>
+                  <button onClick={handleInvite} className={buttonPrimary + " h-8 px-3 text-xs"}>
+                    Add Member
+                  </button>
                 </div>
               </div>
             ) : (
-              <button className={buttonPrimary + " w-full"} onClick={() => setShowInvite(true)}>Invite Team Member</button>
+              <button className={buttonPrimary + " w-full"} onClick={() => setShowInvite(true)}>
+                Invite Team Member
+              </button>
             )}
           </div>
         </Card>
 
         <Card>
-          <SectionTitle title="Security" action={<Shield className="h-4 w-4 text-muted-foreground" />} />
+          <SectionTitle
+            title="Security"
+            action={<Shield className="h-4 w-4 text-muted-foreground" />}
+          />
           <div className="space-y-4 p-6">
             <div className="rounded-lg bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
-              এটা Login Password থেকে আলাদা — এই Password শুধু Rooms Page-এ "Available → Occupied" Override করার জন্য ব্যবহার হয় (Full Security না, শুধু ভুল প্রতিরোধের জন্য)। Staff-দের Login Password উপরে "Users & Roles"-এ প্রতিটা staff-এর Edit থেকে বদলাতে পারবেন।
+              এটা Login Password থেকে আলাদা — এই Password শুধু Rooms Page-এ "Available → Occupied"
+              Override করার জন্য ব্যবহার হয় (Full Security না, শুধু ভুল প্রতিরোধের জন্য)। Staff-দের
+              Login Password উপরে "Users & Roles"-এ প্রতিটা staff-এর Edit থেকে বদলাতে পারবেন।
             </div>
             <Field label="New Admin Password">
               <input
@@ -508,15 +697,27 @@ function SettingsPage() {
               />
             </Field>
             {passwordMsg && (
-              <p className={`text-xs ${passwordMsg.startsWith("✓") ? "text-emerald-600" : "text-red-600"}`}>{passwordMsg}</p>
+              <p
+                className={`text-xs ${passwordMsg.startsWith("✓") ? "text-emerald-600" : "text-red-600"}`}
+              >
+                {passwordMsg}
+              </p>
             )}
-            <button onClick={handleSavePassword} className={buttonPrimary}>Update Admin Password</button>
+            <button onClick={handleSavePassword} className={buttonPrimary}>
+              Update Admin Password
+            </button>
             <div className="flex items-center justify-between rounded-xl border border-border p-4">
               <div>
-                <div className="text-sm font-semibold text-foreground">Two-factor authentication</div>
-                <div className="text-[11px] text-muted-foreground">Add an extra layer of security</div>
+                <div className="text-sm font-semibold text-foreground">
+                  Two-factor authentication
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  Add an extra layer of security
+                </div>
               </div>
-              <button className={buttonGhost + " h-8 px-3 text-xs"} disabled>Coming Soon</button>
+              <button className={buttonGhost + " h-8 px-3 text-xs"} disabled>
+                Coming Soon
+              </button>
             </div>
           </div>
         </Card>

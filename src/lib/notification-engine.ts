@@ -23,7 +23,11 @@ function markCheckoutNotified(id: string) {
 }
 
 function canNotify() {
-  return typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted";
+  return (
+    typeof window !== "undefined" &&
+    "Notification" in window &&
+    Notification.permission === "granted"
+  );
 }
 
 function fireNotification(title: string, body: string) {
@@ -70,7 +74,7 @@ async function checkPendingCheckouts() {
     if (minutesLeft <= 60 && minutesLeft > -60) {
       fireNotification(
         "Checkout Due Soon",
-        `${stay.customer} — Room ${stay.room} checkout is due around ${stay.expectedCheckOut}.`
+        `${stay.customer} — Room ${stay.room} checkout is due around ${stay.expectedCheckOut}.`,
       );
       markCheckoutNotified(stay.id);
     }
@@ -94,7 +98,7 @@ async function checkDailySummary() {
 
   fireNotification(
     "Daily Occupancy Summary",
-    `${occupied}/${total} rooms occupied (${occupancyPct}%) today.`
+    `${occupied}/${total} rooms occupied (${occupancyPct}%) today.`,
   );
   localStorage.setItem(LAST_DAILY_SUMMARY_KEY, todayStr);
 }
@@ -104,10 +108,7 @@ export function notifyCheckIn(customerName: string, room: string, bookingId: str
   const prefs = getNotificationPrefs();
   if (!prefs.checkInAlerts) return;
 
-  fireNotification(
-    "New Check-in",
-    `${customerName} checked into Room ${room} (${bookingId}).`
-  );
+  fireNotification("New Check-in", `${customerName} checked into Room ${room} (${bookingId}).`);
 }
 
 // Fired right when a guest checks out (called from checkout.tsx)
@@ -119,7 +120,7 @@ export function notifyCheckOut(customerName: string, room: string, due: number) 
     "Guest Checked Out",
     due > 0
       ? `${customerName} checked out of Room ${room} — ৳${due.toLocaleString()} due carried forward.`
-      : `${customerName} checked out of Room ${room} — fully paid.`
+      : `${customerName} checked out of Room ${room} — fully paid.`,
   );
 }
 

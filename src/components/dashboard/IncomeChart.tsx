@@ -19,12 +19,8 @@ export default function IncomeChart({ monthly }: Props) {
     <Card className="lg:col-span-2 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">
-            Monthly Income vs Expense
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Last 6 months performance
-          </p>
+          <h3 className="text-sm font-semibold text-foreground">Monthly Income vs Expense</h3>
+          <p className="text-xs text-muted-foreground">Last 6 months performance</p>
         </div>
 
         <StatusPill tone="success">+18.4% YoY</StatusPill>
@@ -45,11 +41,7 @@ export default function IncomeChart({ monthly }: Props) {
               </linearGradient>
             </defs>
 
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="#E2E8F0"
-              vertical={false}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
 
             <XAxis
               dataKey="month"

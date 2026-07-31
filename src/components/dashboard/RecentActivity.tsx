@@ -24,21 +24,17 @@ export default function RecentActivity({ activities }: Props) {
                   a.tone === "success"
                     ? "bg-emerald-500"
                     : a.tone === "warning"
-                    ? "bg-amber-500"
-                    : a.tone === "info"
-                    ? "bg-blue-500"
-                    : "bg-slate-400"
+                      ? "bg-amber-500"
+                      : a.tone === "info"
+                        ? "bg-blue-500"
+                        : "bg-slate-400"
                 }`}
               />
 
               <div className="min-w-0">
-                <div className="text-sm text-foreground">
-                  {a.text}
-                </div>
+                <div className="text-sm text-foreground">{a.text}</div>
 
-                <div className="text-[11px] text-muted-foreground">
-                  {a.time}
-                </div>
+                <div className="text-[11px] text-muted-foreground">{a.time}</div>
               </div>
             </div>
           </li>

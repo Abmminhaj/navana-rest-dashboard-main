@@ -49,7 +49,8 @@ const USED_FOR: StockOutUsedFor[] = ["Room", "Reception", "Kitchen", "Cleaning"]
 
 const inputClass =
   "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
-const labelClass = "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
+const labelClass =
+  "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 const buttonPrimary =
   "inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90";
 
@@ -107,7 +108,7 @@ function InventoryPage() {
 
     const totalConsumables = consumables.length;
     const lowStock = consumables.filter(
-      (c) => c.currentStock > 0 && c.currentStock <= c.minimumStock
+      (c) => c.currentStock > 0 && c.currentStock <= c.minimumStock,
     ).length;
     const outOfStock = consumables.filter((c) => c.currentStock <= 0).length;
 
@@ -116,7 +117,8 @@ function InventoryPage() {
 
   const filteredStockItems = useMemo(() => {
     if (stockFilter === "out") return consumables.filter((c) => c.currentStock <= 0);
-    if (stockFilter === "low") return consumables.filter((c) => c.currentStock > 0 && c.currentStock <= c.minimumStock);
+    if (stockFilter === "low")
+      return consumables.filter((c) => c.currentStock > 0 && c.currentStock <= c.minimumStock);
     return [];
   }, [consumables, stockFilter]);
 
@@ -161,7 +163,9 @@ function InventoryPage() {
           <div className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Total Consumable Items
           </div>
-          <div className="mt-1 text-2xl font-bold text-foreground">{dashboard.totalConsumables}</div>
+          <div className="mt-1 text-2xl font-bold text-foreground">
+            {dashboard.totalConsumables}
+          </div>
         </Card>
 
         <Card
@@ -202,14 +206,22 @@ function InventoryPage() {
               <h3 className="text-sm font-semibold text-foreground">
                 {stockFilter === "low" ? "Low Stock Items" : "Out of Stock Items"}
               </h3>
-              <p className="mt-0.5 text-xs text-muted-foreground">কোন item-এর stock attention দরকার তা এখানে দেখা যাচ্ছে।</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                কোন item-এর stock attention দরকার তা এখানে দেখা যাচ্ছে।
+              </p>
             </div>
-            <button type="button" className="text-xs font-semibold text-muted-foreground hover:text-foreground" onClick={() => setStockFilter(null)}>
+            <button
+              type="button"
+              className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+              onClick={() => setStockFilter(null)}
+            >
               Hide
             </button>
           </div>
           {filteredStockItems.length === 0 ? (
-            <div className="px-5 py-6 text-sm text-muted-foreground">এই category-তে কোনো item নেই।</div>
+            <div className="px-5 py-6 text-sm text-muted-foreground">
+              এই category-তে কোনো item নেই।
+            </div>
           ) : (
             <div className="divide-y divide-border">
               {filteredStockItems.map((item) => (
@@ -220,8 +232,13 @@ function InventoryPage() {
                   onClick={() => setTab("Consumables")}
                 >
                   <span className="font-semibold text-foreground">{item.itemName}</span>
-                  <span className={`text-sm font-semibold ${item.currentStock <= 0 ? "text-red-600" : "text-amber-600"}`}>
-                    {item.currentStock} {item.unit} <span className="ml-1 text-xs font-normal text-muted-foreground">(minimum {item.minimumStock})</span>
+                  <span
+                    className={`text-sm font-semibold ${item.currentStock <= 0 ? "text-red-600" : "text-amber-600"}`}
+                  >
+                    {item.currentStock} {item.unit}{" "}
+                    <span className="ml-1 text-xs font-normal text-muted-foreground">
+                      (minimum {item.minimumStock})
+                    </span>
                   </span>
                 </button>
               ))}
@@ -237,7 +254,9 @@ function InventoryPage() {
             key={t}
             onClick={() => setTab(t)}
             className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              tab === t ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              tab === t
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {t}
@@ -246,7 +265,9 @@ function InventoryPage() {
       </div>
 
       {tab === "Assets" && <AssetsTab assets={assets} />}
-      {tab === "Consumables" && <ConsumablesTab consumables={consumables} stockFilter={stockFilter} />}
+      {tab === "Consumables" && (
+        <ConsumablesTab consumables={consumables} stockFilter={stockFilter} />
+      )}
       {tab === "Stock In" && <StockInTab consumables={consumables} history={stockIn} />}
       {tab === "Stock Out" && <StockOutTab consumables={consumables} history={stockOut} />}
       {tab === "Damage / Lost" && (
@@ -309,39 +330,77 @@ function AssetsTab({ assets }: { assets: Asset[] }) {
           <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
               <label className={labelClass}>Item Name</label>
-              <input className={inputClass} value={itemName} onChange={(e) => setItemName(e.target.value)} required />
+              <input
+                className={inputClass}
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+                required
+              />
             </div>
             <div>
               <label className={labelClass}>Category</label>
-              <input className={inputClass} value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Furniture, Electronics" />
+              <input
+                className={inputClass}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder="e.g. Furniture, Electronics"
+              />
             </div>
             <div>
               <label className={labelClass}>Quantity</label>
-              <input type="number" min="1" className={inputClass} value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
+              <input
+                type="number"
+                min="1"
+                className={inputClass}
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                required
+              />
             </div>
             <div>
               <label className={labelClass}>Condition</label>
-              <select className={inputClass} value={condition} onChange={(e) => setCondition(e.target.value as AssetCondition)}>
+              <select
+                className={inputClass}
+                value={condition}
+                onChange={(e) => setCondition(e.target.value as AssetCondition)}
+              >
                 {CONDITIONS.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
               <label className={labelClass}>Location</label>
-              <select className={inputClass} value={location} onChange={(e) => setLocation(e.target.value)}>
+              <select
+                className={inputClass}
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+              >
                 {ASSET_LOCATIONS.map((l) => (
-                  <option key={l} value={l}>{l}</option>
+                  <option key={l} value={l}>
+                    {l}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
               <label className={labelClass}>Purchase Date (Optional)</label>
-              <input type="date" className={inputClass} value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} />
+              <input
+                type="date"
+                className={inputClass}
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+              />
             </div>
             <div className="md:col-span-3">
               <label className={labelClass}>Remarks</label>
-              <input className={inputClass} value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+              <input
+                className={inputClass}
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+              />
             </div>
             <div className="md:col-span-3">
               <button type="submit" disabled={saving} className={buttonPrimary}>
@@ -378,7 +437,9 @@ function AssetsTab({ assets }: { assets: Asset[] }) {
                     <td className="px-4 py-3 font-semibold text-foreground">{a.itemName}</td>
                     <td className="px-4 py-3 text-muted-foreground">{a.category || "—"}</td>
                     <td className="px-4 py-3 text-right text-foreground">{a.quantity}</td>
-                    <td className="px-4 py-3"><StatusPill tone={conditionTone(a.condition)}>{a.condition}</StatusPill></td>
+                    <td className="px-4 py-3">
+                      <StatusPill tone={conditionTone(a.condition)}>{a.condition}</StatusPill>
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">{a.location}</td>
                     <td className="px-4 py-3 text-muted-foreground">{a.remarks || "—"}</td>
                   </tr>
@@ -396,7 +457,13 @@ function AssetsTab({ assets }: { assets: Asset[] }) {
 // Consumables Tab
 // =========================================================
 
-function ConsumablesTab({ consumables, stockFilter }: { consumables: Consumable[]; stockFilter: "low" | "out" | null }) {
+function ConsumablesTab({
+  consumables,
+  stockFilter,
+}: {
+  consumables: Consumable[];
+  stockFilter: "low" | "out" | null;
+}) {
   const [showForm, setShowForm] = useState(false);
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("");
@@ -407,11 +474,12 @@ function ConsumablesTab({ consumables, stockFilter }: { consumables: Consumable[
   const [remarks, setRemarks] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const visibleConsumables = stockFilter === "out"
-    ? consumables.filter((c) => c.currentStock <= 0)
-    : stockFilter === "low"
-      ? consumables.filter((c) => c.currentStock > 0 && c.currentStock <= c.minimumStock)
-      : consumables;
+  const visibleConsumables =
+    stockFilter === "out"
+      ? consumables.filter((c) => c.currentStock <= 0)
+      : stockFilter === "low"
+        ? consumables.filter((c) => c.currentStock > 0 && c.currentStock <= c.minimumStock)
+        : consumables;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -441,7 +509,11 @@ function ConsumablesTab({ consumables, stockFilter }: { consumables: Consumable[
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-foreground">Consumables</h3>
-          {stockFilter && <p className="mt-1 text-xs text-muted-foreground">Showing {stockFilter === "low" ? "low stock" : "out of stock"} items</p>}
+          {stockFilter && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Showing {stockFilter === "low" ? "low stock" : "out of stock"} items
+            </p>
+          )}
         </div>
         <button className={buttonPrimary} onClick={() => setShowForm((v) => !v)}>
           <Plus className="h-4 w-4" />
@@ -454,39 +526,76 @@ function ConsumablesTab({ consumables, stockFilter }: { consumables: Consumable[
           <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
               <label className={labelClass}>Item Name</label>
-              <input className={inputClass} value={itemName} onChange={(e) => setItemName(e.target.value)} required />
+              <input
+                className={inputClass}
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+                required
+              />
             </div>
             <div>
               <label className={labelClass}>Category</label>
-              <input className={inputClass} value={category} onChange={(e) => setCategory(e.target.value)} />
+              <input
+                className={inputClass}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              />
             </div>
             <div>
               <label className={labelClass}>Unit</label>
-              <select className={inputClass} value={unit} onChange={(e) => setUnit(e.target.value as ConsumableUnit)}>
+              <select
+                className={inputClass}
+                value={unit}
+                onChange={(e) => setUnit(e.target.value as ConsumableUnit)}
+              >
                 {UNITS.map((u) => (
-                  <option key={u} value={u}>{u}</option>
+                  <option key={u} value={u}>
+                    {u}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
               <label className={labelClass}>Current Stock</label>
-              <input type="number" min="0" className={inputClass} value={currentStock} onChange={(e) => setCurrentStock(e.target.value)} />
+              <input
+                type="number"
+                min="0"
+                className={inputClass}
+                value={currentStock}
+                onChange={(e) => setCurrentStock(e.target.value)}
+              />
             </div>
             <div>
               <label className={labelClass}>Minimum Stock</label>
-              <input type="number" min="0" className={inputClass} value={minimumStock} onChange={(e) => setMinimumStock(e.target.value)} />
+              <input
+                type="number"
+                min="0"
+                className={inputClass}
+                value={minimumStock}
+                onChange={(e) => setMinimumStock(e.target.value)}
+              />
             </div>
             <div>
               <label className={labelClass}>Location</label>
-              <select className={inputClass} value={location} onChange={(e) => setLocation(e.target.value)}>
+              <select
+                className={inputClass}
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+              >
                 {ASSET_LOCATIONS.map((l) => (
-                  <option key={l} value={l}>{l}</option>
+                  <option key={l} value={l}>
+                    {l}
+                  </option>
                 ))}
               </select>
             </div>
             <div className="md:col-span-3">
               <label className={labelClass}>Remarks</label>
-              <input className={inputClass} value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+              <input
+                className={inputClass}
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+              />
             </div>
             <div className="md:col-span-3">
               <button type="submit" disabled={saving} className={buttonPrimary}>
@@ -525,8 +634,12 @@ function ConsumablesTab({ consumables, stockFilter }: { consumables: Consumable[
                     <tr key={c.id} className="border-t border-border hover:bg-muted/30">
                       <td className="px-4 py-3 font-semibold text-foreground">{c.itemName}</td>
                       <td className="px-4 py-3 text-muted-foreground">{c.category || "—"}</td>
-                      <td className="px-4 py-3 text-right text-foreground">{c.currentStock} {c.unit}</td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">{c.minimumStock} {c.unit}</td>
+                      <td className="px-4 py-3 text-right text-foreground">
+                        {c.currentStock} {c.unit}
+                      </td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">
+                        {c.minimumStock} {c.unit}
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">{c.location}</td>
                       <td className="px-4 py-3">
                         {isOut ? (
@@ -553,7 +666,13 @@ function ConsumablesTab({ consumables, stockFilter }: { consumables: Consumable[
 // Stock In Tab
 // =========================================================
 
-function StockInTab({ consumables, history }: { consumables: Consumable[]; history: StockInEntry[] }) {
+function StockInTab({
+  consumables,
+  history,
+}: {
+  consumables: Consumable[];
+  history: StockInEntry[];
+}) {
   const [consumableId, setConsumableId] = useState(consumables[0]?.id || "");
   const [quantity, setQuantity] = useState("1");
   const [supplier, setSupplier] = useState("");
@@ -591,28 +710,58 @@ function StockInTab({ consumables, history }: { consumables: Consumable[]; histo
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
             <label className={labelClass}>Date</label>
-            <input type="date" className={inputClass} value={date} onChange={(e) => setDate(e.target.value)} required />
+            <input
+              type="date"
+              className={inputClass}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              required
+            />
           </div>
           <div>
             <label className={labelClass}>Item</label>
-            <select className={inputClass} value={consumableId} onChange={(e) => setConsumableId(e.target.value)} required>
-              {consumables.length === 0 && <option value="">প্রথমে একটি Consumable যোগ করুন</option>}
+            <select
+              className={inputClass}
+              value={consumableId}
+              onChange={(e) => setConsumableId(e.target.value)}
+              required
+            >
+              {consumables.length === 0 && (
+                <option value="">প্রথমে একটি Consumable যোগ করুন</option>
+              )}
               {consumables.map((c) => (
-                <option key={c.id} value={c.id}>{c.itemName} ({c.currentStock} {c.unit})</option>
+                <option key={c.id} value={c.id}>
+                  {c.itemName} ({c.currentStock} {c.unit})
+                </option>
               ))}
             </select>
           </div>
           <div>
             <label className={labelClass}>Quantity</label>
-            <input type="number" min="1" className={inputClass} value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
+            <input
+              type="number"
+              min="1"
+              className={inputClass}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              required
+            />
           </div>
           <div>
             <label className={labelClass}>Supplier (Optional)</label>
-            <input className={inputClass} value={supplier} onChange={(e) => setSupplier(e.target.value)} />
+            <input
+              className={inputClass}
+              value={supplier}
+              onChange={(e) => setSupplier(e.target.value)}
+            />
           </div>
           <div className="md:col-span-2">
             <label className={labelClass}>Notes</label>
-            <input className={inputClass} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <input
+              className={inputClass}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
           </div>
           <div className="md:col-span-3">
             <button type="submit" disabled={saving || !consumableId} className={buttonPrimary}>
@@ -668,7 +817,13 @@ function StockInTab({ consumables, history }: { consumables: Consumable[]; histo
 // Stock Out Tab
 // =========================================================
 
-function StockOutTab({ consumables, history }: { consumables: Consumable[]; history: StockOutEntry[] }) {
+function StockOutTab({
+  consumables,
+  history,
+}: {
+  consumables: Consumable[];
+  history: StockOutEntry[];
+}) {
   const [consumableId, setConsumableId] = useState(consumables[0]?.id || "");
   const [quantity, setQuantity] = useState("1");
   const [usedFor, setUsedFor] = useState<StockOutUsedFor>("Room");
@@ -705,32 +860,64 @@ function StockOutTab({ consumables, history }: { consumables: Consumable[]; hist
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
             <label className={labelClass}>Date</label>
-            <input type="date" className={inputClass} value={date} onChange={(e) => setDate(e.target.value)} required />
+            <input
+              type="date"
+              className={inputClass}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              required
+            />
           </div>
           <div>
             <label className={labelClass}>Item</label>
-            <select className={inputClass} value={consumableId} onChange={(e) => setConsumableId(e.target.value)} required>
-              {consumables.length === 0 && <option value="">প্রথমে একটি Consumable যোগ করুন</option>}
+            <select
+              className={inputClass}
+              value={consumableId}
+              onChange={(e) => setConsumableId(e.target.value)}
+              required
+            >
+              {consumables.length === 0 && (
+                <option value="">প্রথমে একটি Consumable যোগ করুন</option>
+              )}
               {consumables.map((c) => (
-                <option key={c.id} value={c.id}>{c.itemName} ({c.currentStock} {c.unit})</option>
+                <option key={c.id} value={c.id}>
+                  {c.itemName} ({c.currentStock} {c.unit})
+                </option>
               ))}
             </select>
           </div>
           <div>
             <label className={labelClass}>Quantity</label>
-            <input type="number" min="1" className={inputClass} value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
+            <input
+              type="number"
+              min="1"
+              className={inputClass}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              required
+            />
           </div>
           <div>
             <label className={labelClass}>Used For</label>
-            <select className={inputClass} value={usedFor} onChange={(e) => setUsedFor(e.target.value as StockOutUsedFor)}>
+            <select
+              className={inputClass}
+              value={usedFor}
+              onChange={(e) => setUsedFor(e.target.value as StockOutUsedFor)}
+            >
               {USED_FOR.map((u) => (
-                <option key={u} value={u}>{u}</option>
+                <option key={u} value={u}>
+                  {u}
+                </option>
               ))}
             </select>
           </div>
           <div className="md:col-span-2">
             <label className={labelClass}>Notes</label>
-            <input className={inputClass} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <input
+              className={inputClass}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
           </div>
           <div className="md:col-span-3">
             <button type="submit" disabled={saving || !consumableId} className={buttonPrimary}>
@@ -847,7 +1034,13 @@ function DamageLostTab({
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
             <label className={labelClass}>Date</label>
-            <input type="date" className={inputClass} value={date} onChange={(e) => setDate(e.target.value)} required />
+            <input
+              type="date"
+              className={inputClass}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              required
+            />
           </div>
           <div>
             <label className={labelClass}>Item Type</label>
@@ -865,21 +1058,39 @@ function DamageLostTab({
           </div>
           <div>
             <label className={labelClass}>Item</label>
-            <select className={inputClass} value={selectedId} onChange={(e) => setSelectedId(e.target.value)} required>
+            <select
+              className={inputClass}
+              value={selectedId}
+              onChange={(e) => setSelectedId(e.target.value)}
+              required
+            >
               <option value="">নির্বাচন করুন</option>
               {options.map((o: any) => (
-                <option key={o.id} value={o.id}>{o.itemName}</option>
+                <option key={o.id} value={o.id}>
+                  {o.itemName}
+                </option>
               ))}
             </select>
           </div>
           <div>
             <label className={labelClass}>Quantity</label>
-            <input type="number" min="1" className={inputClass} value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
+            <input
+              type="number"
+              min="1"
+              className={inputClass}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              required
+            />
           </div>
           {itemType === "Asset" && (
             <div>
               <label className={labelClass}>Mark As</label>
-              <select className={inputClass} value={assetNewCondition} onChange={(e) => setAssetNewCondition(e.target.value as "Damaged" | "Lost")}>
+              <select
+                className={inputClass}
+                value={assetNewCondition}
+                onChange={(e) => setAssetNewCondition(e.target.value as "Damaged" | "Lost")}
+              >
                 <option value="Damaged">Damaged</option>
                 <option value="Lost">Lost</option>
               </select>
@@ -887,11 +1098,19 @@ function DamageLostTab({
           )}
           <div className="md:col-span-2">
             <label className={labelClass}>Reason</label>
-            <input className={inputClass} value={reason} onChange={(e) => setReason(e.target.value)} />
+            <input
+              className={inputClass}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
           </div>
           <div className="md:col-span-3">
             <button type="submit" disabled={saving || !selectedId} className={buttonPrimary}>
-              {itemType === "Asset" ? <Wrench className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+              {itemType === "Asset" ? (
+                <Wrench className="h-4 w-4" />
+              ) : (
+                <XCircle className="h-4 w-4" />
+              )}
               {saving ? "Saving..." : "Save Record"}
             </button>
           </div>
@@ -935,7 +1154,11 @@ function DamageLostTab({
                           type="button"
                           className="rounded-md border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
                           onClick={async () => {
-                            if (window.confirm("এই record restore করলে inventory-তে item/stock ফিরে আসবে। Continue?")) {
+                            if (
+                              window.confirm(
+                                "এই record restore করলে inventory-তে item/stock ফিরে আসবে। Continue?",
+                              )
+                            ) {
                               await restoreDamageLost(h);
                             }
                           }}
@@ -946,7 +1169,11 @@ function DamageLostTab({
                           type="button"
                           className="rounded-md border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
                           onClick={async () => {
-                            if (window.confirm("এই damage/lost history delete করবেন? Inventory status অপরিবর্তিত থাকবে।")) {
+                            if (
+                              window.confirm(
+                                "এই damage/lost history delete করবেন? Inventory status অপরিবর্তিত থাকবে।",
+                              )
+                            ) {
                               await deleteDamageLost(h.id);
                             }
                           }}

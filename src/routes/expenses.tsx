@@ -1,10 +1,24 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Card, Field, PageHeader, SectionTitle, buttonGhost, buttonPrimary, inputClass, selectClass, textareaClass } from "@/components/ui-kit";
+import {
+  Card,
+  Field,
+  PageHeader,
+  SectionTitle,
+  buttonGhost,
+  buttonPrimary,
+  inputClass,
+  selectClass,
+  textareaClass,
+} from "@/components/ui-kit";
 import { Plus, Download, Search, Trash2, X } from "lucide-react";
 import type { Expense } from "@/lib/mock-data";
 import { getExpenses, addExpense, deleteExpense } from "@/lib/expense-storage";
-import { getExpenseCategories, addExpenseCategory, deleteExpenseCategory } from "@/lib/expense-category-storage";
+import {
+  getExpenseCategories,
+  addExpenseCategory,
+  deleteExpenseCategory,
+} from "@/lib/expense-category-storage";
 
 export const Route = createFileRoute("/expenses")({
   head: () => ({ meta: [{ title: "Expenses — Navana Rest House" }] }),
@@ -147,7 +161,12 @@ function ExpensesPage() {
   }
 
   async function handleDeleteCategory(cat: string) {
-    if (!window.confirm(`"${cat}" Category মুছে ফেলতে চান? (আগের Expense-এ এই Category-র নাম থেকে যাবে)`)) return;
+    if (
+      !window.confirm(
+        `"${cat}" Category মুছে ফেলতে চান? (আগের Expense-এ এই Category-র নাম থেকে যাবে)`,
+      )
+    )
+      return;
 
     const updated = await deleteExpenseCategory(cat);
     setCategories(updated);
@@ -158,7 +177,13 @@ function ExpensesPage() {
 
   function handleExport() {
     const header = ["Date", "Category", "Description", "Method", "Amount"];
-    const rows = filtered.map((e) => [e.date, e.category, e.description, e.method, String(e.amount)]);
+    const rows = filtered.map((e) => [
+      e.date,
+      e.category,
+      e.description,
+      e.method,
+      String(e.amount),
+    ]);
 
     const csv = [header, ...rows]
       .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
@@ -180,17 +205,26 @@ function ExpensesPage() {
         description="Track operational spend and reconcile against income."
         actions={
           <button className={buttonGhost} onClick={handleExport}>
-            <Download className="h-4 w-4" />Export
+            <Download className="h-4 w-4" />
+            Export
           </button>
         }
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-1">
-          <SectionTitle title="Add New Expense" action={<Plus className="h-4 w-4 text-muted-foreground" />} />
+          <SectionTitle
+            title="Add New Expense"
+            action={<Plus className="h-4 w-4 text-muted-foreground" />}
+          />
           <div className="space-y-4 p-6">
             <Field label="Date">
-              <input type="date" className={inputClass} value={date} onChange={(e) => setDate(e.target.value)} />
+              <input
+                type="date"
+                className={inputClass}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
             </Field>
 
             <Field label="Category">
@@ -253,18 +287,28 @@ function ExpensesPage() {
                         onChange={(e) => setNewCategory(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
                       />
-                      <button type="button" className={buttonPrimary + " shrink-0 px-3"} onClick={handleAddCategory}>
+                      <button
+                        type="button"
+                        className={buttonPrimary + " shrink-0 px-3"}
+                        onClick={handleAddCategory}
+                      >
                         Add
                       </button>
                       <button
                         type="button"
                         className={buttonGhost + " shrink-0 px-2"}
-                        onClick={() => { setShowAddCategory(false); setNewCategory(""); setCategoryError(""); }}
+                        onClick={() => {
+                          setShowAddCategory(false);
+                          setNewCategory("");
+                          setCategoryError("");
+                        }}
                       >
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                    {categoryError && <p className="text-xs font-medium text-red-500">{categoryError}</p>}
+                    {categoryError && (
+                      <p className="text-xs font-medium text-red-500">{categoryError}</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -288,7 +332,11 @@ function ExpensesPage() {
               />
             </Field>
             <Field label="Payment Method">
-              <select className={selectClass} value={method} onChange={(e) => setMethod(e.target.value)}>
+              <select
+                className={selectClass}
+                value={method}
+                onChange={(e) => setMethod(e.target.value)}
+              >
                 {METHODS.map((m) => (
                   <option key={m}>{m}</option>
                 ))}
@@ -316,42 +364,45 @@ function ExpensesPage() {
             <div>
               <h2 className="text-sm font-semibold text-foreground">Expense History</h2>
               <p className="text-[11px] text-muted-foreground">
-                Total{search && " (filtered)"}: <span className="font-bold text-foreground">৳{total.toLocaleString()}</span>
+                Total{search && " (filtered)"}:{" "}
+                <span className="font-bold text-foreground">৳{total.toLocaleString()}</span>
               </p>
             </div>
             <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
-              {[
-                "All time",
-                "Last 7 days",
-                "Last 15 days",
-                "Last 30 days",
-                "Last year",
-              ].map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  onClick={() => applyDatePreset(preset)}
-                  className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
-                    datePreset === preset
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {preset}
-                </button>
-              ))}
+              {["All time", "Last 7 days", "Last 15 days", "Last 30 days", "Last year"].map(
+                (preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => applyDatePreset(preset)}
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+                      datePreset === preset
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ),
+              )}
               <input
                 type="date"
                 className={inputClass + " h-8 w-32 text-xs"}
                 value={fromDate}
-                onChange={(e) => { setFromDate(e.target.value); setDatePreset("Custom"); }}
+                onChange={(e) => {
+                  setFromDate(e.target.value);
+                  setDatePreset("Custom");
+                }}
               />
               <span className="text-xs text-muted-foreground">to</span>
               <input
                 type="date"
                 className={inputClass + " h-8 w-32 text-xs"}
                 value={toDate}
-                onChange={(e) => { setToDate(e.target.value); setDatePreset("Custom"); }}
+                onChange={(e) => {
+                  setToDate(e.target.value);
+                  setDatePreset("Custom");
+                }}
               />
             </div>
             <div className="relative w-full max-w-xs flex-1 lg:w-64">
@@ -394,7 +445,9 @@ function ExpensesPage() {
                       </td>
                       <td className="px-4 py-3 text-foreground">{e.description}</td>
                       <td className="px-4 py-3 text-muted-foreground">{e.method}</td>
-                      <td className="px-4 py-3 text-right font-bold text-foreground">৳{e.amount.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right font-bold text-foreground">
+                        ৳{e.amount.toLocaleString()}
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <button
                           onClick={() => handleDelete(e.id)}
@@ -410,8 +463,15 @@ function ExpensesPage() {
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-border bg-muted/40 text-sm">
-                  <td colSpan={4} className="px-4 py-3 text-right font-semibold text-muted-foreground">Total</td>
-                  <td className="px-4 py-3 text-right text-base font-bold text-foreground">৳{total.toLocaleString()}</td>
+                  <td
+                    colSpan={4}
+                    className="px-4 py-3 text-right font-semibold text-muted-foreground"
+                  >
+                    Total
+                  </td>
+                  <td className="px-4 py-3 text-right text-base font-bold text-foreground">
+                    ৳{total.toLocaleString()}
+                  </td>
                   <td></td>
                 </tr>
               </tfoot>

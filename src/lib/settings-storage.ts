@@ -103,9 +103,28 @@ export interface StaffMember {
 }
 
 const DEFAULT_STAFF: StaffMember[] = [
-  { id: "u1", name: "Arif Rahman", role: "Administrator", email: "arif@navana.com", isAdmin: true, allowedPages: [] },
-  { id: "u2", name: "Sumaiya Khan", role: "Manager", email: "sumaiya@navana.com", allowedPages: [] },
-  { id: "u3", name: "Rakib Hossain", role: "Receptionist", email: "rakib@navana.com", allowedPages: [] },
+  {
+    id: "u1",
+    name: "Arif Rahman",
+    role: "Administrator",
+    email: "arif@navana.com",
+    isAdmin: true,
+    allowedPages: [],
+  },
+  {
+    id: "u2",
+    name: "Sumaiya Khan",
+    role: "Manager",
+    email: "sumaiya@navana.com",
+    allowedPages: [],
+  },
+  {
+    id: "u3",
+    name: "Rakib Hossain",
+    role: "Receptionist",
+    email: "rakib@navana.com",
+    allowedPages: [],
+  },
 ];
 
 let cachedStaff: StaffMember[] = [...DEFAULT_STAFF];
@@ -126,7 +145,11 @@ export function getStaff(): StaffMember[] {
 }
 
 export function addStaffMember(member: Omit<StaffMember, "id">): StaffMember {
-  const newMember: StaffMember = { ...member, id: `u${Date.now()}`, allowedPages: member.allowedPages || [] };
+  const newMember: StaffMember = {
+    ...member,
+    id: `u${Date.now()}`,
+    allowedPages: member.allowedPages || [],
+  };
   cachedStaff = [...cachedStaff, newMember];
   refreshSettings();
 

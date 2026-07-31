@@ -35,7 +35,10 @@ export function isLoggedIn(): boolean {
   return cachedUser !== null;
 }
 
-export async function login(phone: string, password: string): Promise<{ success: boolean; error?: string }> {
+export async function login(
+  phone: string,
+  password: string,
+): Promise<{ success: boolean; error?: string }> {
   const { data, error } = await supabase.rpc("staff_login", {
     input_phone: phone.trim(),
     input_password: password,

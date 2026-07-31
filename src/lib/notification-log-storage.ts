@@ -51,7 +51,10 @@ export async function addNotificationLogEntry(entry: { title: string; body: stri
 }
 
 export async function markAllRead() {
-  const { error } = await supabase.from("notification_log").update({ read: true }).eq("read", false);
+  const { error } = await supabase
+    .from("notification_log")
+    .update({ read: true })
+    .eq("read", false);
   if (error) console.error("markAllRead failed:", error.message);
   refreshNotificationLog();
 }

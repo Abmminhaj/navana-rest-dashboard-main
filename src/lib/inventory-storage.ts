@@ -485,7 +485,10 @@ export async function restoreDamageLost(entry: DamageLostEntry) {
     if (!error && current) {
       await supabase
         .from("inventory_consumables")
-        .update({ current_stock: Number(current.current_stock) + entry.quantity, updated_at: new Date().toISOString() })
+        .update({
+          current_stock: Number(current.current_stock) + entry.quantity,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", entry.consumableId);
     }
   }

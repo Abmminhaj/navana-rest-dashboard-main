@@ -48,10 +48,7 @@ export default function PendingCheckout({ activeStays }: Props) {
       <div className="flex items-center justify-between border-b px-6 py-4">
         <h2 className="text-sm font-semibold">Pending Check Outs</h2>
 
-        <Link
-          to="/checkout"
-          className="text-xs font-semibold text-primary hover:underline"
-        >
+        <Link to="/checkout" className="text-xs font-semibold text-primary hover:underline">
           View all
         </Link>
       </div>
@@ -64,9 +61,7 @@ export default function PendingCheckout({ activeStays }: Props) {
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-foreground">
-                {s.customer}
-              </div>
+              <div className="truncate text-sm font-semibold text-foreground">{s.customer}</div>
 
               <div className="text-[11px] text-muted-foreground">
                 Remaining ৳{liveDueOf(s).toLocaleString()}

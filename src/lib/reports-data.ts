@@ -1,5 +1,9 @@
 import { getBookings } from "./booking-storage";
-import { getCustomerHistory, parseDuePayments, type CustomerHistoryRecord } from "./customer-history-storage";
+import {
+  getCustomerHistory,
+  parseDuePayments,
+  type CustomerHistoryRecord,
+} from "./customer-history-storage";
 import { getActiveStays } from "./stay-storage";
 import { getExpenses } from "./expense-storage";
 import { getRooms } from "./room-storage";
@@ -42,7 +46,11 @@ function getPeriodRanges(period: ReportPeriod): { label: string; start: Date; en
       start.setDate(today.getDate() - i);
       const end = new Date(start);
       end.setDate(start.getDate() + 1);
-      ranges.push({ label: start.toLocaleDateString("en-US", { day: "numeric", month: "short" }), start, end });
+      ranges.push({
+        label: start.toLocaleDateString("en-US", { day: "numeric", month: "short" }),
+        start,
+        end,
+      });
     }
   } else if (period === "Weekly") {
     // Rolling last-7-days blocks, most recent block ends today (not calendar Mon-Sun weeks)
@@ -52,7 +60,10 @@ function getPeriodRanges(period: ReportPeriod): { label: string; start: Date; en
       const start = new Date(end);
       start.setDate(end.getDate() - 7);
       const startLabel = start.toLocaleDateString("en-US", { day: "numeric", month: "short" });
-      const endLabel = new Date(end.getTime() - MS_PER_DAY).toLocaleDateString("en-US", { day: "numeric", month: "short" });
+      const endLabel = new Date(end.getTime() - MS_PER_DAY).toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "short",
+      });
       ranges.push({ label: `${startLabel} - ${endLabel}`, start, end });
     }
   } else if (period === "Monthly") {
@@ -139,7 +150,10 @@ export async function getReportData(period: ReportPeriod): Promise<PeriodRow[]> 
       return sum + Math.max(0, nights);
     }, 0);
 
-    const occupancy = Math.max(0, Math.min(100, Math.round((occupiedNights / (totalRooms * periodDays)) * 100)));
+    const occupancy = Math.max(
+      0,
+      Math.min(100, Math.round((occupiedNights / (totalRooms * periodDays)) * 100)),
+    );
 
     const income = bookingIncome + checkoutIncome + duePaymentIncome;
 

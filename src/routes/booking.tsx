@@ -1,7 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Save, User, BedDouble, CreditCard, Search, Upload, X, Camera, CheckCircle2 } from "lucide-react";
-import { Card, Field, PageHeader, SectionTitle, buttonGhost, buttonPrimary, inputClass, selectClass, textareaClass } from "@/components/ui-kit";
+import {
+  Save,
+  User,
+  BedDouble,
+  CreditCard,
+  Search,
+  Upload,
+  X,
+  Camera,
+  CheckCircle2,
+} from "lucide-react";
+import {
+  Card,
+  Field,
+  PageHeader,
+  SectionTitle,
+  buttonGhost,
+  buttonPrimary,
+  inputClass,
+  selectClass,
+  textareaClass,
+} from "@/components/ui-kit";
 import { CameraCapture } from "@/components/CameraCapture";
 import { type Room } from "@/lib/mock-data";
 import { getCustomerHistory, type CustomerHistoryRecord } from "@/lib/customer-history-storage";
@@ -131,7 +151,7 @@ function BookingPage() {
     const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     const allBookings = await getBookings();
     const todaysCount = allBookings.filter(
-      (b: any) => typeof b.bookingId === "string" && b.bookingId.startsWith(`NRH-${todayStr}-`)
+      (b: any) => typeof b.bookingId === "string" && b.bookingId.startsWith(`NRH-${todayStr}-`),
     ).length;
     const nextSeq = String(todaysCount + 1).padStart(4, "0");
     return `NRH-${todayStr}-${nextSeq}`;
@@ -139,18 +159,18 @@ function BookingPage() {
 
   const availableDistricts = useMemo(
     () => (divisionId ? getDistrictsByDivision(divisionId) : []),
-    [divisionId]
+    [divisionId],
   );
 
   const availableUpazilas = useMemo(
     () => (districtId ? getUpazilasByDistrict(districtId) : []),
-    [districtId]
+    [districtId],
   );
 
   async function handlePhotoSelect(
     file: File | undefined,
     setPhoto: (value: string | null) => void,
-    setName: (value: string) => void
+    setName: (value: string) => void,
   ) {
     setPhotoError("");
     if (!file) return;
@@ -210,9 +230,7 @@ function BookingPage() {
     ? availableRooms.filter((r) => r.type === roomTypeFilter)
     : availableRooms;
 
-  const roomInfo = availableRooms.find(
-    (r) => r.number === selectedRoom
-  );
+  const roomInfo = availableRooms.find((r) => r.number === selectedRoom);
 
   const divisionName = divisions.find((d) => d.id === divisionId)?.name || "";
   const districtName = availableDistricts.find((d) => d.id === districtId)?.name || "";
@@ -236,16 +254,13 @@ function BookingPage() {
   const nights = Math.max(
     1,
     Math.ceil(
-      (new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) /
-        (1000 * 60 * 60 * 24)
-    )
+      (new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24),
+    ),
   );
 
-  const totalRent =
-    (Number(roomRent) || 0) * nights - (Number(discount) || 0);
+  const totalRent = (Number(roomRent) || 0) * nights - (Number(discount) || 0);
 
-  const due =
-    totalRent - (Number(advancePayment) || 0) + (Number(previousDue) || 0);
+  const due = totalRent - (Number(advancePayment) || 0) + (Number(previousDue) || 0);
 
   async function handleSaveBooking(options?: { skipDuplicateCheck?: boolean }) {
     if (isSaving) return;
@@ -259,7 +274,8 @@ function BookingPage() {
     additionalGuests.forEach((guest, index) => {
       if (!guest.name.trim()) missingFields.push(`Additional Guest ${index + 1} Name`);
       if (!guest.phone.trim()) missingFields.push(`Additional Guest ${index + 1} Phone`);
-      if (!guest.fatherName.trim()) missingFields.push(`Additional Guest ${index + 1} Father's Name`);
+      if (!guest.fatherName.trim())
+        missingFields.push(`Additional Guest ${index + 1} Father's Name`);
       if (!guest.divisionId || !guest.districtId || !guest.upazilaId || !guest.village?.trim()) {
         missingFields.push(`Additional Guest ${index + 1} Address`);
       }
@@ -288,7 +304,7 @@ function BookingPage() {
       const normalizedPhone = phone.replace(/\D/g, "");
       const activeStays = await getActiveStays();
       const existingGuest = activeStays.find(
-        (stay) => stay.phone?.replace(/\D/g, "") === normalizedPhone
+        (stay) => stay.phone?.replace(/\D/g, "") === normalizedPhone,
       );
 
       if (existingGuest) {
@@ -456,18 +472,17 @@ function BookingPage() {
           </select>
         </Field>
         <Field label="Booking ID">
-          <input
-            className={inputClass}
-            value={bookingId}
-            readOnly
-          />
+          <input className={inputClass} value={bookingId} readOnly />
         </Field>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card>
-            <SectionTitle title="Customer Information" action={<User className="h-4 w-4 text-muted-foreground" />} />
+            <SectionTitle
+              title="Customer Information"
+              action={<User className="h-4 w-4 text-muted-foreground" />}
+            />
             <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
               <Field label="Customer Name *">
                 <input
@@ -506,9 +521,7 @@ function BookingPage() {
 
               {suggestion && showSuggestion && (
                 <div className="rounded-lg bg-white p-4 shadow-sm md:col-start-2">
-                  <h3 className="mb-3 text-base font-bold text-blue-700">
-                    👤 Existing Customer
-                  </h3>
+                  <h3 className="mb-3 text-base font-bold text-blue-700">👤 Existing Customer</h3>
                   <div className="grid grid-cols-2 gap-y-2 text-sm">
                     <span className="font-medium">Name</span>
                     <span>{suggestion.customer}</span>
@@ -522,9 +535,7 @@ function BookingPage() {
                   <hr className="my-4" />
                   <div className="mb-3 flex items-center gap-2">
                     <BedDouble className="h-5 w-5 text-blue-600" />
-                    <h4 className="font-semibold text-gray-800">
-                      Last Stay
-                    </h4>
+                    <h4 className="font-semibold text-gray-800">Last Stay</h4>
                   </div>
                   <div className="grid grid-cols-2 gap-y-2 text-sm">
                     <span className="font-medium">Room</span>
@@ -722,9 +733,7 @@ function BookingPage() {
                       alt="NID preview"
                       className="h-12 w-12 rounded object-cover"
                     />
-                    <span className="truncate text-xs text-muted-foreground">
-                      {nidPhotoName}
-                    </span>
+                    <span className="truncate text-xs text-muted-foreground">{nidPhotoName}</span>
                     <button
                       type="button"
                       className="ml-auto text-muted-foreground hover:text-foreground"
@@ -748,7 +757,11 @@ function BookingPage() {
                       accept="image/*"
                       className="hidden"
                       onChange={(e) =>
-                        handlePhotoSelect(e.target.files?.[0], setCustomerPhoto, setCustomerPhotoName)
+                        handlePhotoSelect(
+                          e.target.files?.[0],
+                          setCustomerPhoto,
+                          setCustomerPhotoName,
+                        )
                       }
                     />
                   </label>
@@ -783,9 +796,7 @@ function BookingPage() {
                   </div>
                 )}
               </Field>
-              {photoError && (
-                <div className="md:col-span-2 text-xs text-red-600">{photoError}</div>
-              )}
+              {photoError && <div className="md:col-span-2 text-xs text-red-600">{photoError}</div>}
             </div>
           </Card>
 
@@ -836,7 +847,9 @@ function BookingPage() {
                         type="button"
                         className="text-xs font-medium text-red-600 hover:text-red-700"
                         onClick={() =>
-                          setAdditionalGuests((current) => current.filter((item) => item.id !== guest.id))
+                          setAdditionalGuests((current) =>
+                            current.filter((item) => item.id !== guest.id),
+                          )
                         }
                       >
                         Remove
@@ -893,7 +906,9 @@ function BookingPage() {
                           onChange={(e) =>
                             setAdditionalGuests((current) =>
                               current.map((item) =>
-                                item.id === guest.id ? { ...item, fatherName: e.target.value } : item,
+                                item.id === guest.id
+                                  ? { ...item, fatherName: e.target.value }
+                                  : item,
                               ),
                             )
                           }
@@ -934,7 +949,15 @@ function BookingPage() {
                                 setAdditionalGuests((current) =>
                                   current.map((item) =>
                                     item.id === guest.id
-                                      ? { ...item, divisionId: e.target.value, districtId: "", upazilaId: "", village: "", address: "", sameAsMain: false }
+                                      ? {
+                                          ...item,
+                                          divisionId: e.target.value,
+                                          districtId: "",
+                                          upazilaId: "",
+                                          village: "",
+                                          address: "",
+                                          sameAsMain: false,
+                                        }
                                       : item,
                                   ),
                                 )
@@ -942,7 +965,9 @@ function BookingPage() {
                             >
                               <option value="">Select Division</option>
                               {divisions.map((division) => (
-                                <option key={division.id} value={division.id}>{division.name}</option>
+                                <option key={division.id} value={division.id}>
+                                  {division.name}
+                                </option>
                               ))}
                             </select>
                           </Field>
@@ -955,15 +980,29 @@ function BookingPage() {
                                 setAdditionalGuests((current) =>
                                   current.map((item) =>
                                     item.id === guest.id
-                                      ? { ...item, districtId: e.target.value, upazilaId: "", village: "", address: "", sameAsMain: false }
+                                      ? {
+                                          ...item,
+                                          districtId: e.target.value,
+                                          upazilaId: "",
+                                          village: "",
+                                          address: "",
+                                          sameAsMain: false,
+                                        }
                                       : item,
                                   ),
                                 )
                               }
                             >
-                              <option value="">{guest.divisionId ? "Select District" : "Select Division first"}</option>
-                              {(guest.divisionId ? getDistrictsByDivision(guest.divisionId) : []).map((district) => (
-                                <option key={district.id} value={district.id}>{district.name}</option>
+                              <option value="">
+                                {guest.divisionId ? "Select District" : "Select Division first"}
+                              </option>
+                              {(guest.divisionId
+                                ? getDistrictsByDivision(guest.divisionId)
+                                : []
+                              ).map((district) => (
+                                <option key={district.id} value={district.id}>
+                                  {district.name}
+                                </option>
                               ))}
                             </select>
                           </Field>
@@ -976,17 +1015,42 @@ function BookingPage() {
                                 setAdditionalGuests((current) =>
                                   current.map((item) => {
                                     if (item.id !== guest.id) return item;
-                                    const upazilaName = getUpazilasByDistrict(item.districtId || "").find((upazila) => upazila.id === e.target.value)?.name || "";
-                                    const districtName = getDistrictsByDivision(item.divisionId || "").find((district) => district.id === item.districtId)?.name || "";
-                                    const divisionName = divisions.find((division) => division.id === item.divisionId)?.name || "";
-                                    return { ...item, upazilaId: e.target.value, village: "", address: [divisionName, districtName, upazilaName].filter(Boolean).join(", "), sameAsMain: false };
+                                    const upazilaName =
+                                      getUpazilasByDistrict(item.districtId || "").find(
+                                        (upazila) => upazila.id === e.target.value,
+                                      )?.name || "";
+                                    const districtName =
+                                      getDistrictsByDivision(item.divisionId || "").find(
+                                        (district) => district.id === item.districtId,
+                                      )?.name || "";
+                                    const divisionName =
+                                      divisions.find((division) => division.id === item.divisionId)
+                                        ?.name || "";
+                                    return {
+                                      ...item,
+                                      upazilaId: e.target.value,
+                                      village: "",
+                                      address: [divisionName, districtName, upazilaName]
+                                        .filter(Boolean)
+                                        .join(", "),
+                                      sameAsMain: false,
+                                    };
                                   }),
                                 )
                               }
                             >
-                              <option value="">{guest.districtId ? "Select Thana / Upazila" : "Select District first"}</option>
-                              {(guest.districtId ? getUpazilasByDistrict(guest.districtId) : []).map((upazila) => (
-                                <option key={upazila.id} value={upazila.id}>{upazila.name}</option>
+                              <option value="">
+                                {guest.districtId
+                                  ? "Select Thana / Upazila"
+                                  : "Select District first"}
+                              </option>
+                              {(guest.districtId
+                                ? getUpazilasByDistrict(guest.districtId)
+                                : []
+                              ).map((upazila) => (
+                                <option key={upazila.id} value={upazila.id}>
+                                  {upazila.name}
+                                </option>
                               ))}
                             </select>
                           </Field>
@@ -1000,10 +1064,30 @@ function BookingPage() {
                                 setAdditionalGuests((current) =>
                                   current.map((item) => {
                                     if (item.id !== guest.id) return item;
-                                    const divisionName = divisions.find((division) => division.id === item.divisionId)?.name || "";
-                                    const districtName = getDistrictsByDivision(item.divisionId || "").find((district) => district.id === item.districtId)?.name || "";
-                                    const upazilaName = getUpazilasByDistrict(item.districtId || "").find((upazila) => upazila.id === item.upazilaId)?.name || "";
-                                    return { ...item, village: e.target.value, address: [divisionName, districtName, upazilaName, e.target.value].filter(Boolean).join(", "), sameAsMain: false };
+                                    const divisionName =
+                                      divisions.find((division) => division.id === item.divisionId)
+                                        ?.name || "";
+                                    const districtName =
+                                      getDistrictsByDivision(item.divisionId || "").find(
+                                        (district) => district.id === item.districtId,
+                                      )?.name || "";
+                                    const upazilaName =
+                                      getUpazilasByDistrict(item.districtId || "").find(
+                                        (upazila) => upazila.id === item.upazilaId,
+                                      )?.name || "";
+                                    return {
+                                      ...item,
+                                      village: e.target.value,
+                                      address: [
+                                        divisionName,
+                                        districtName,
+                                        upazilaName,
+                                        e.target.value,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(", "),
+                                      sameAsMain: false,
+                                    };
                                   }),
                                 )
                               }
@@ -1019,7 +1103,10 @@ function BookingPage() {
           </Card>
 
           <Card>
-            <SectionTitle title="Room Information" action={<BedDouble className="h-4 w-4 text-muted-foreground" />} />
+            <SectionTitle
+              title="Room Information"
+              action={<BedDouble className="h-4 w-4 text-muted-foreground" />}
+            />
             <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
               <Field label="Room Type">
                 <select
@@ -1030,7 +1117,7 @@ function BookingPage() {
                     setRoomTypeFilter(newFilter);
                     if (newFilter && selectedRoom) {
                       const stillValid = availableRooms.find(
-                        (r) => r.number === selectedRoom && r.type === newFilter
+                        (r) => r.number === selectedRoom && r.type === newFilter,
                       );
                       if (!stillValid) {
                         setSelectedRoom("");
@@ -1041,7 +1128,9 @@ function BookingPage() {
                 >
                   <option value="">All Types</option>
                   {roomTypesInUse.map((t) => (
-                    <option key={t} value={t}>{t}</option>
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
                   ))}
                 </select>
               </Field>
@@ -1052,9 +1141,7 @@ function BookingPage() {
                   onChange={(e) => {
                     const roomNumber = e.target.value;
                     setSelectedRoom(roomNumber);
-                    const room = availableRooms.find(
-                      (r) => r.number === roomNumber
-                    );
+                    const room = availableRooms.find((r) => r.number === roomNumber);
                     setRoomRent(room ? room.rent.toString() : "");
                     if (room) setRoomTypeFilter(room.type);
                   }}
@@ -1067,7 +1154,9 @@ function BookingPage() {
                   ))}
                 </select>
                 {roomTypeFilter && filteredAvailableRooms.length === 0 && (
-                  <p className="mt-1 text-xs text-amber-600">এই মুহূর্তে কোনো Available {roomTypeFilter} Room নেই।</p>
+                  <p className="mt-1 text-xs text-amber-600">
+                    এই মুহূর্তে কোনো Available {roomTypeFilter} Room নেই।
+                  </p>
                 )}
               </Field>
               <Field label="Check-in Date">
@@ -1106,7 +1195,10 @@ function BookingPage() {
           </Card>
 
           <Card>
-            <SectionTitle title="Payment Information" action={<CreditCard className="h-4 w-4 text-muted-foreground" />} />
+            <SectionTitle
+              title="Payment Information"
+              action={<CreditCard className="h-4 w-4 text-muted-foreground" />}
+            />
             <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-3">
               <Field label="Room Rent (per night)">
                 <input
@@ -1162,7 +1254,10 @@ function BookingPage() {
 
           <div className="flex justify-end">
             <button
-              className={buttonPrimary + " h-12 px-8 text-base disabled:cursor-not-allowed disabled:opacity-60"}
+              className={
+                buttonPrimary +
+                " h-12 px-8 text-base disabled:cursor-not-allowed disabled:opacity-60"
+              }
               onClick={() => handleSaveBooking()}
               disabled={isSaving}
               aria-busy={isSaving}
@@ -1179,11 +1274,7 @@ function BookingPage() {
           <dl className="mt-4 space-y-3 text-sm">
             <Row
               label="Room"
-              value={
-                selectedRoom
-                  ? `${selectedRoom} · ${roomInfo?.type ?? ""}`
-                  : "-"
-              }
+              value={selectedRoom ? `${selectedRoom} · ${roomInfo?.type ?? ""}` : "-"}
             />
             <Row label="Nights" value={String(nights)} />
             <Row label="Room Rent" value={`৳${roomRent || 0}`} />
@@ -1221,11 +1312,14 @@ function BookingPage() {
               Booking Complete
             </h2>
             <p className="mt-2 text-sm text-slate-600">
-              Room <span className="font-bold text-emerald-700">{bookingComplete.room}</span> has been booked successfully.
+              Room <span className="font-bold text-emerald-700">{bookingComplete.room}</span> has
+              been booked successfully.
             </p>
             <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
               <div className="font-semibold">{bookingComplete.customerName}</div>
-              <div className="mt-1 text-xs text-emerald-700">Booking ID: {bookingComplete.bookingId}</div>
+              <div className="mt-1 text-xs text-emerald-700">
+                Booking ID: {bookingComplete.bookingId}
+              </div>
             </div>
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
               <button
@@ -1270,7 +1364,14 @@ function BookingPage() {
                   Active guest found
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Phone number <span className="font-semibold text-slate-900">{duplicateGuest.phone}</span> is already checked in for <span className="font-semibold text-slate-900">{duplicateGuest.customerName}</span> in Room <span className="font-semibold text-slate-900">{duplicateGuest.room}</span>.
+                  Phone number{" "}
+                  <span className="font-semibold text-slate-900">{duplicateGuest.phone}</span> is
+                  already checked in for{" "}
+                  <span className="font-semibold text-slate-900">
+                    {duplicateGuest.customerName}
+                  </span>{" "}
+                  in Room{" "}
+                  <span className="font-semibold text-slate-900">{duplicateGuest.room}</span>.
                 </p>
                 <p className="mt-2 text-sm font-medium text-amber-700">
                   Do you want to create another booking for this family or group?
@@ -1303,19 +1404,13 @@ function BookingPage() {
   );
 }
 
-function Row({
-  label,
-  value,
-  bold,
-}: {
-  label: string;
-  value: string;
-  bold?: boolean;
-}) {
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
     <div className="flex items-center justify-between">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className={bold ? "font-bold text-foreground" : "font-medium text-foreground"}>{value}</dd>
+      <dd className={bold ? "font-bold text-foreground" : "font-medium text-foreground"}>
+        {value}
+      </dd>
     </div>
   );
 }

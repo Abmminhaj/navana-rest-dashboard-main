@@ -17,22 +17,14 @@ type Props = {
 export default function ProfitChart({ monthly }: Props) {
   return (
     <Card className="p-6">
-      <h3 className="text-sm font-semibold text-foreground">
-        Profit Trend
-      </h3>
+      <h3 className="text-sm font-semibold text-foreground">Profit Trend</h3>
 
-      <p className="text-xs text-muted-foreground">
-        Monthly net profit
-      </p>
+      <p className="text-xs text-muted-foreground">Monthly net profit</p>
 
       <div className="mt-4 h-64">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={monthly}>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="#E2E8F0"
-              vertical={false}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
 
             <XAxis
               dataKey="month"

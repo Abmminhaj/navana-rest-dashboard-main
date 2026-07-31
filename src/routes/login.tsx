@@ -88,7 +88,11 @@ function LoginPage() {
 
           {error && <p className="text-xs font-medium text-red-500">{error}</p>}
 
-          <button type="submit" disabled={loading} className={buttonPrimary + " w-full disabled:opacity-60"}>
+          <button
+            type="submit"
+            disabled={loading}
+            className={buttonPrimary + " w-full disabled:opacity-60"}
+          >
             {loading ? "লগইন হচ্ছে…" : "লগইন করুন"}
           </button>
         </form>
