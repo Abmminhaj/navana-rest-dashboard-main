@@ -333,7 +333,7 @@ function RoomsPage() {
                   <button
                     key={r.number}
                     onClick={() => openRoom(r)}
-                    className={`group rounded-xl border p-4 text-left transition ${s.bg}`}
+                    className={`group rounded-xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm ${s.bg}`}
                   >
                     <div className="flex items-start justify-between">
                       <div className={`text-2xl font-bold ${getRoomTypeColor(r.type)}`}>

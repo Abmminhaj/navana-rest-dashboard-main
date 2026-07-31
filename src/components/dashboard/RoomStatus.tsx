@@ -41,7 +41,7 @@ export default function RoomStatus({ rooms, statusColor }: Props) {
           {rooms.map((r) => (
             <div
               key={r.number}
-              className={`rounded-xl border px-3 py-3 transition hover:scale-[1.02] ${statusColor[r.status]}`}
+              className={`rounded-xl border px-3 py-3 transition-all duration-200 hover:scale-[1.02] hover:shadow-md ${statusColor[r.status]}`}
             >
               <div className={`text-lg font-bold ${getRoomTypeColor(r.type)}`}>{r.number}</div>
 

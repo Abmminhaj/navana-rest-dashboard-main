@@ -478,10 +478,14 @@ function BookingPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card>
+          <Card className="border-l-4 border-l-blue-500">
             <SectionTitle
               title="Customer Information"
-              action={<User className="h-4 w-4 text-muted-foreground" />}
+              action={
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                  <User className="h-3.5 w-3.5" />
+                </span>
+              }
             />
             <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
               <Field label="Customer Name *">
@@ -800,7 +804,7 @@ function BookingPage() {
             </div>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-amber-400">
             <SectionTitle
               title="Additional Guests (Optional)"
               action={
@@ -1102,10 +1106,14 @@ function BookingPage() {
             </div>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-violet-500">
             <SectionTitle
               title="Room Information"
-              action={<BedDouble className="h-4 w-4 text-muted-foreground" />}
+              action={
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-50 text-violet-600">
+                  <BedDouble className="h-3.5 w-3.5" />
+                </span>
+              }
             />
             <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
               <Field label="Room Type">
@@ -1194,10 +1202,14 @@ function BookingPage() {
             </div>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-emerald-500">
             <SectionTitle
               title="Payment Information"
-              action={<CreditCard className="h-4 w-4 text-muted-foreground" />}
+              action={
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                  <CreditCard className="h-3.5 w-3.5" />
+                </span>
+              }
             />
             <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-3">
               <Field label="Room Rent (per night)">
