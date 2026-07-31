@@ -17,10 +17,19 @@ function todayDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function daysAgo(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() - days + 1);
+  return date.toISOString().slice(0, 10);
+}
+
 function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [search, setSearch] = useState("");
+  const [datePreset, setDatePreset] = useState("All time");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const [date, setDate] = useState(todayDate());
   const [category, setCategory] = useState("");
@@ -54,6 +63,8 @@ function ExpensesPage() {
   }, []);
 
   const filtered = expenses.filter((e) => {
+    if (fromDate && e.date < fromDate) return false;
+    if (toDate && e.date > toDate) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
 
@@ -63,6 +74,17 @@ function ExpensesPage() {
       e.method.toLowerCase().includes(q)
     );
   });
+
+  function applyDatePreset(preset: string) {
+    setDatePreset(preset);
+    const end = todayDate();
+    setToDate(preset === "All time" ? "" : end);
+    if (preset === "Last 7 days") setFromDate(daysAgo(7));
+    else if (preset === "Last 15 days") setFromDate(daysAgo(15));
+    else if (preset === "Last 30 days") setFromDate(daysAgo(30));
+    else if (preset === "Last year") setFromDate(daysAgo(365));
+    else setFromDate("");
+  }
 
   const total = filtered.reduce((s, e) => s + e.amount, 0);
 
@@ -297,7 +319,42 @@ function ExpensesPage() {
                 Total{search && " (filtered)"}: <span className="font-bold text-foreground">৳{total.toLocaleString()}</span>
               </p>
             </div>
-            <div className="relative max-w-xs flex-1">
+            <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
+              {[
+                "All time",
+                "Last 7 days",
+                "Last 15 days",
+                "Last 30 days",
+                "Last year",
+              ].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => applyDatePreset(preset)}
+                  className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+                    datePreset === preset
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {preset}
+                </button>
+              ))}
+              <input
+                type="date"
+                className={inputClass + " h-8 w-32 text-xs"}
+                value={fromDate}
+                onChange={(e) => { setFromDate(e.target.value); setDatePreset("Custom"); }}
+              />
+              <span className="text-xs text-muted-foreground">to</span>
+              <input
+                type="date"
+                className={inputClass + " h-8 w-32 text-xs"}
+                value={toDate}
+                onChange={(e) => { setToDate(e.target.value); setDatePreset("Custom"); }}
+              />
+            </div>
+            <div className="relative w-full max-w-xs flex-1 lg:w-64">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 className={inputClass + " pl-9"}

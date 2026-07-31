@@ -465,6 +465,34 @@ export async function addDamageLostForConsumable(input: {
   refreshInventory();
 }
 
+/** Remove a damage/lost log while keeping the current inventory unchanged. */
+export async function deleteDamageLost(id: string) {
+  const { error } = await supabase.from("inventory_damage_lost").delete().eq("id", id);
+  if (error) console.error("deleteDamageLost failed:", error.message);
+  refreshInventory();
+}
+
+/** Undo a damage/lost entry: restore the asset condition or consumable stock, then remove the log. */
+export async function restoreDamageLost(entry: DamageLostEntry) {
+  if (entry.itemType === "Asset" && entry.assetId) {
+    await updateAsset(entry.assetId, { condition: "Good" });
+  } else if (entry.itemType === "Consumable" && entry.consumableId) {
+    const { data: current, error } = await supabase
+      .from("inventory_consumables")
+      .select("current_stock")
+      .eq("id", entry.consumableId)
+      .single();
+    if (!error && current) {
+      await supabase
+        .from("inventory_consumables")
+        .update({ current_stock: Number(current.current_stock) + entry.quantity, updated_at: new Date().toISOString() })
+        .eq("id", entry.consumableId);
+    }
+  }
+  await supabase.from("inventory_damage_lost").delete().eq("id", entry.id);
+  refreshInventory();
+}
+
 // =========================================================
 // Reactivity — mirrors the window-event pattern used by
 // room-storage / expense-storage / notification-log-storage

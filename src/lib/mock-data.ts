@@ -70,6 +70,7 @@ export interface ActiveStay {
   previousDue?: number;
   nidPhoto?: string | null;
   customerPhoto?: string | null;
+  additionalGuests?: { id: string; name: string; nid: string; phone: string; fatherName: string; address: string; divisionId?: string; districtId?: string; upazilaId?: string; village?: string; sameAsMain?: boolean }[];
   notes?: string;
 }
 

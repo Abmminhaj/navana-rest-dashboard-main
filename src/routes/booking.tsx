@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { Save, User, BedDouble, CreditCard, Search, Upload, X, Camera } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Save, User, BedDouble, CreditCard, Search, Upload, X, Camera, CheckCircle2 } from "lucide-react";
 import { Card, Field, PageHeader, SectionTitle, buttonGhost, buttonPrimary, inputClass, selectClass, textareaClass } from "@/components/ui-kit";
 import { CameraCapture } from "@/components/CameraCapture";
 import { type Room } from "@/lib/mock-data";
@@ -8,7 +8,8 @@ import { getCustomerHistory, type CustomerHistoryRecord } from "@/lib/customer-h
 import { divisions, getDistrictsByDivision, getUpazilasByDistrict } from "@/lib/bd-locations";
 import { saveBooking, getBookings } from "@/lib/booking-storage";
 import { getRooms, occupyRoom, refreshRooms } from "@/lib/room-storage";
-import { saveActiveStay } from "@/lib/stay-storage";
+import { getActiveStays, saveActiveStay } from "@/lib/stay-storage";
+import type { AdditionalGuest } from "@/lib/additional-guest-storage";
 import { notifyCheckIn } from "@/lib/notification-engine";
 
 const MIN_PHOTO_SIZE_BYTES = 10 * 1024; // 10KB minimum
@@ -101,6 +102,30 @@ function BookingPage() {
   const [roomTypeFilter, setRoomTypeFilter] = useState("");
   const [customerHistory, setCustomerHistory] = useState<CustomerHistoryRecord[]>([]);
   const [bookingId, setBookingId] = useState("");
+  const [validationError, setValidationError] = useState("");
+  const [validationAttempted, setValidationAttempted] = useState(false);
+  const [bookingComplete, setBookingComplete] = useState<{
+    bookingId: string;
+    room: string;
+    customerName: string;
+  } | null>(null);
+  const [duplicateGuest, setDuplicateGuest] = useState<{
+    room: string;
+    customerName: string;
+    phone: string;
+  } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [additionalGuests, setAdditionalGuests] = useState<AdditionalGuest[]>([]);
+  const customerNameRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const fatherNameRef = useRef<HTMLInputElement>(null);
+  const villageRef = useRef<HTMLInputElement>(null);
+
+  function requiredFieldClass(value: string) {
+    return validationAttempted && !value.trim()
+      ? `${inputClass} border-red-500 ring-1 ring-red-200 focus:border-red-500 focus:ring-red-200`
+      : inputClass;
+  }
 
   async function generateBookingId() {
     const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
@@ -197,6 +222,17 @@ function BookingPage() {
     .filter(Boolean)
     .join(", ");
 
+  useEffect(() => {
+    if (!additionalGuests.some((guest) => guest.sameAsMain)) return;
+    setAdditionalGuests((current) =>
+      current.map((guest) =>
+        guest.sameAsMain
+          ? { ...guest, divisionId, districtId, upazilaId, village, address: fullAddress }
+          : guest,
+      ),
+    );
+  }, [divisionId, districtId, upazilaId, village, fullAddress]);
+
   const nights = Math.max(
     1,
     Math.ceil(
@@ -211,7 +247,61 @@ function BookingPage() {
   const due =
     totalRent - (Number(advancePayment) || 0) + (Number(previousDue) || 0);
 
-  async function handleSaveBooking() {
+  async function handleSaveBooking(options?: { skipDuplicateCheck?: boolean }) {
+    if (isSaving) return;
+    setIsSaving(true);
+    setValidationAttempted(true);
+    const missingFields: string[] = [];
+    if (!customerName.trim()) missingFields.push("Customer Name");
+    if (!phone.trim()) missingFields.push("Phone Number");
+    if (!fatherName.trim()) missingFields.push("Father's Name");
+    if (!fullAddress.trim()) missingFields.push("Address");
+    additionalGuests.forEach((guest, index) => {
+      if (!guest.name.trim()) missingFields.push(`Additional Guest ${index + 1} Name`);
+      if (!guest.phone.trim()) missingFields.push(`Additional Guest ${index + 1} Phone`);
+      if (!guest.fatherName.trim()) missingFields.push(`Additional Guest ${index + 1} Father's Name`);
+      if (!guest.divisionId || !guest.districtId || !guest.upazilaId || !guest.village?.trim()) {
+        missingFields.push(`Additional Guest ${index + 1} Address`);
+      }
+    });
+
+    if (missingFields.length > 0) {
+      setIsSaving(false);
+      setValidationError(`Booking save করতে এই তথ্যগুলো দিতে হবে: ${missingFields.join(", ")}`);
+      const firstMissingRef = !customerName.trim()
+        ? customerNameRef
+        : !phone.trim()
+          ? phoneRef
+          : !fatherName.trim()
+            ? fatherNameRef
+            : villageRef;
+      window.setTimeout(() => {
+        firstMissingRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        firstMissingRef.current?.focus();
+      }, 0);
+      return;
+    }
+
+    setValidationError("");
+
+    if (!options?.skipDuplicateCheck) {
+      const normalizedPhone = phone.replace(/\D/g, "");
+      const activeStays = await getActiveStays();
+      const existingGuest = activeStays.find(
+        (stay) => stay.phone?.replace(/\D/g, "") === normalizedPhone
+      );
+
+      if (existingGuest) {
+        setIsSaving(false);
+        setDuplicateGuest({
+          room: existingGuest.room,
+          customerName: existingGuest.customer,
+          phone: existingGuest.phone,
+        });
+        return;
+      }
+    }
+
     const bookingData = {
       bookingId,
       guestType,
@@ -241,6 +331,7 @@ function BookingPage() {
       due,
       paymentMethod,
       notes,
+      additionalGuests,
     };
 
     const activeStay = {
@@ -268,6 +359,7 @@ function BookingPage() {
       previousDue,
       nidPhoto,
       customerPhoto,
+      additionalGuests,
       notes,
     };
 
@@ -278,8 +370,8 @@ function BookingPage() {
     notifyCheckIn(customerName, selectedRoom, bookingId);
 
     console.log("Booking Saved:", bookingData);
-    alert(`Booking ${bookingId} saved successfully! Form cleared for the next guest.`);
-    await resetForm();
+    setBookingComplete({ bookingId, room: selectedRoom, customerName });
+    setIsSaving(false);
   }
 
   async function resetForm() {
@@ -309,11 +401,15 @@ function BookingPage() {
     setNidPhotoName("");
     setCustomerPhoto(null);
     setCustomerPhotoName("");
+    setAdditionalGuests([]);
     setPhotoError("");
     setPaymentMethod("Cash");
     setShowSuggestion(true);
     setPreviousDue(0);
     setBookingId(await generateBookingId());
+    setValidationError("");
+    setValidationAttempted(false);
+    setIsSaving(false);
   }
 
   return (
@@ -324,15 +420,26 @@ function BookingPage() {
         actions={
           <>
             <button
-              className={buttonPrimary}
-              onClick={handleSaveBooking}
+              className={buttonPrimary + " disabled:cursor-not-allowed disabled:opacity-60"}
+              onClick={() => handleSaveBooking()}
+              disabled={isSaving}
+              aria-busy={isSaving}
             >
               <Save className="h-4 w-4" />
-              Save Booking
+              {isSaving ? "Saving..." : "Save Booking"}
             </button>
           </>
         }
       />
+
+      {validationError && (
+        <div
+          className="mx-6 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+          role="alert"
+        >
+          {validationError}
+        </div>
+      )}
 
       <div className="border-b border-border p-6">
         <Field label="Guest Type">
@@ -362,23 +469,35 @@ function BookingPage() {
           <Card>
             <SectionTitle title="Customer Information" action={<User className="h-4 w-4 text-muted-foreground" />} />
             <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
-              <Field label="Customer Name">
+              <Field label="Customer Name *">
                 <input
-                  className={inputClass}
+                  ref={customerNameRef}
+                  className={requiredFieldClass(customerName)}
                   placeholder="e.g. Md. Tanvir Ahmed"
                   value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
+                  required
+                  aria-required="true"
+                  aria-invalid={validationAttempted && !customerName.trim()}
+                  onChange={(e) => {
+                    setCustomerName(e.target.value);
+                    setValidationError("");
+                  }}
                 />
               </Field>
-              <Field label="Phone Number">
+              <Field label="Phone Number *">
                 <div className="relative">
                   <input
-                    className={inputClass + " pl-9"}
+                    ref={phoneRef}
+                    className={requiredFieldClass(phone) + " pl-9"}
                     placeholder="017XX-XXXXXX"
                     value={phone}
+                    required
+                    aria-required="true"
+                    aria-invalid={validationAttempted && !phone.trim()}
                     onChange={(e) => {
                       setPhone(e.target.value);
                       setShowSuggestion(true);
+                      setValidationError("");
                     }}
                   />
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -462,12 +581,19 @@ function BookingPage() {
                   onChange={(e) => setProfession(e.target.value)}
                 />
               </Field>
-              <Field label="Father's Name">
+              <Field label="Father's Name *">
                 <input
-                  className={inputClass}
+                  ref={fatherNameRef}
+                  className={requiredFieldClass(fatherName)}
                   placeholder="e.g. Md. Rahim Uddin"
                   value={fatherName}
-                  onChange={(e) => setFatherName(e.target.value)}
+                  required
+                  aria-required="true"
+                  aria-invalid={validationAttempted && !fatherName.trim()}
+                  onChange={(e) => {
+                    setFatherName(e.target.value);
+                    setValidationError("");
+                  }}
                 />
               </Field>
               <Field label="Nationality">
@@ -537,12 +663,19 @@ function BookingPage() {
                   ))}
                 </select>
               </Field>
-              <Field label="Village">
+              <Field label="Village / Address *">
                 <input
-                  className={inputClass}
+                  ref={villageRef}
+                  className={requiredFieldClass(village)}
                   placeholder="Village name"
                   value={village}
-                  onChange={(e) => setVillage(e.target.value)}
+                  required
+                  aria-required="true"
+                  aria-invalid={validationAttempted && !village.trim()}
+                  onChange={(e) => {
+                    setVillage(e.target.value);
+                    setValidationError("");
+                  }}
                 />
               </Field>
 
@@ -652,6 +785,235 @@ function BookingPage() {
               </Field>
               {photoError && (
                 <div className="md:col-span-2 text-xs text-red-600">{photoError}</div>
+              )}
+            </div>
+          </Card>
+
+          <Card>
+            <SectionTitle
+              title="Additional Guests (Optional)"
+              action={
+                <button
+                  type="button"
+                  className={buttonGhost + " h-8 px-3 text-xs"}
+                  onClick={() =>
+                    setAdditionalGuests((current) => [
+                      ...current,
+                      {
+                        id: crypto.randomUUID(),
+                        name: "",
+                        nid: "",
+                        phone: "",
+                        fatherName: "",
+                        address: "",
+                        divisionId: "",
+                        districtId: "",
+                        upazilaId: "",
+                        village: "",
+                        sameAsMain: false,
+                      },
+                    ])
+                  }
+                >
+                  + Add Guest
+                </button>
+              }
+            />
+            <div className="space-y-3 p-6">
+              <p className="text-xs text-muted-foreground">
+                একই room ও bill-এর সঙ্গে থাকা family/group member-দের তথ্য এখানে যোগ করো।
+              </p>
+              {additionalGuests.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border px-4 py-5 text-center text-sm text-muted-foreground">
+                  এখনো কোনো additional guest যোগ করা হয়নি।
+                </div>
+              ) : (
+                additionalGuests.map((guest, index) => (
+                  <div key={guest.id} className="rounded-xl border border-border bg-muted/20 p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <p className="text-sm font-semibold text-foreground">Guest {index + 2}</p>
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-red-600 hover:text-red-700"
+                        onClick={() =>
+                          setAdditionalGuests((current) => current.filter((item) => item.id !== guest.id))
+                        }
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <Field label="Name *">
+                        <input
+                          className={inputClass}
+                          placeholder="Guest name"
+                          value={guest.name}
+                          onChange={(e) =>
+                            setAdditionalGuests((current) =>
+                              current.map((item) =>
+                                item.id === guest.id ? { ...item, name: e.target.value } : item,
+                              ),
+                            )
+                          }
+                        />
+                      </Field>
+                      <Field label="NID (Optional)">
+                        <input
+                          className={inputClass}
+                          placeholder="NID number"
+                          value={guest.nid}
+                          onChange={(e) =>
+                            setAdditionalGuests((current) =>
+                              current.map((item) =>
+                                item.id === guest.id ? { ...item, nid: e.target.value } : item,
+                              ),
+                            )
+                          }
+                        />
+                      </Field>
+                      <Field label="Phone *">
+                        <input
+                          className={inputClass}
+                          placeholder="Phone number"
+                          value={guest.phone}
+                          onChange={(e) =>
+                            setAdditionalGuests((current) =>
+                              current.map((item) =>
+                                item.id === guest.id ? { ...item, phone: e.target.value } : item,
+                              ),
+                            )
+                          }
+                        />
+                      </Field>
+                      <Field label="Father's Name *">
+                        <input
+                          className={inputClass}
+                          placeholder="Father's name"
+                          value={guest.fatherName}
+                          onChange={(e) =>
+                            setAdditionalGuests((current) =>
+                              current.map((item) =>
+                                item.id === guest.id ? { ...item, fatherName: e.target.value } : item,
+                              ),
+                            )
+                          }
+                        />
+                      </Field>
+                      <div className="md:col-span-2 space-y-3 rounded-lg border border-border bg-background p-3">
+                        <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(guest.sameAsMain)}
+                            onChange={(e) =>
+                              setAdditionalGuests((current) =>
+                                current.map((item) =>
+                                  item.id === guest.id
+                                    ? {
+                                        ...item,
+                                        sameAsMain: e.target.checked,
+                                        divisionId: e.target.checked ? divisionId : item.divisionId,
+                                        districtId: e.target.checked ? districtId : item.districtId,
+                                        upazilaId: e.target.checked ? upazilaId : item.upazilaId,
+                                        village: e.target.checked ? village : item.village,
+                                        address: e.target.checked ? fullAddress : item.address,
+                                      }
+                                    : item,
+                                ),
+                              )
+                            }
+                          />
+                          Same as Main Guest Address
+                        </label>
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                          <Field label="Division *">
+                            <select
+                              className={selectClass}
+                              value={guest.divisionId || ""}
+                              disabled={Boolean(guest.sameAsMain)}
+                              onChange={(e) =>
+                                setAdditionalGuests((current) =>
+                                  current.map((item) =>
+                                    item.id === guest.id
+                                      ? { ...item, divisionId: e.target.value, districtId: "", upazilaId: "", village: "", address: "", sameAsMain: false }
+                                      : item,
+                                  ),
+                                )
+                              }
+                            >
+                              <option value="">Select Division</option>
+                              {divisions.map((division) => (
+                                <option key={division.id} value={division.id}>{division.name}</option>
+                              ))}
+                            </select>
+                          </Field>
+                          <Field label="District *">
+                            <select
+                              className={selectClass}
+                              value={guest.districtId || ""}
+                              disabled={Boolean(guest.sameAsMain) || !guest.divisionId}
+                              onChange={(e) =>
+                                setAdditionalGuests((current) =>
+                                  current.map((item) =>
+                                    item.id === guest.id
+                                      ? { ...item, districtId: e.target.value, upazilaId: "", village: "", address: "", sameAsMain: false }
+                                      : item,
+                                  ),
+                                )
+                              }
+                            >
+                              <option value="">{guest.divisionId ? "Select District" : "Select Division first"}</option>
+                              {(guest.divisionId ? getDistrictsByDivision(guest.divisionId) : []).map((district) => (
+                                <option key={district.id} value={district.id}>{district.name}</option>
+                              ))}
+                            </select>
+                          </Field>
+                          <Field label="Thana / Upazila *">
+                            <select
+                              className={selectClass}
+                              value={guest.upazilaId || ""}
+                              disabled={Boolean(guest.sameAsMain) || !guest.districtId}
+                              onChange={(e) =>
+                                setAdditionalGuests((current) =>
+                                  current.map((item) => {
+                                    if (item.id !== guest.id) return item;
+                                    const upazilaName = getUpazilasByDistrict(item.districtId || "").find((upazila) => upazila.id === e.target.value)?.name || "";
+                                    const districtName = getDistrictsByDivision(item.divisionId || "").find((district) => district.id === item.districtId)?.name || "";
+                                    const divisionName = divisions.find((division) => division.id === item.divisionId)?.name || "";
+                                    return { ...item, upazilaId: e.target.value, village: "", address: [divisionName, districtName, upazilaName].filter(Boolean).join(", "), sameAsMain: false };
+                                  }),
+                                )
+                              }
+                            >
+                              <option value="">{guest.districtId ? "Select Thana / Upazila" : "Select District first"}</option>
+                              {(guest.districtId ? getUpazilasByDistrict(guest.districtId) : []).map((upazila) => (
+                                <option key={upazila.id} value={upazila.id}>{upazila.name}</option>
+                              ))}
+                            </select>
+                          </Field>
+                          <Field label="Village *">
+                            <input
+                              className={inputClass}
+                              placeholder="Village name"
+                              value={guest.village || ""}
+                              disabled={Boolean(guest.sameAsMain)}
+                              onChange={(e) =>
+                                setAdditionalGuests((current) =>
+                                  current.map((item) => {
+                                    if (item.id !== guest.id) return item;
+                                    const divisionName = divisions.find((division) => division.id === item.divisionId)?.name || "";
+                                    const districtName = getDistrictsByDivision(item.divisionId || "").find((district) => district.id === item.districtId)?.name || "";
+                                    const upazilaName = getUpazilasByDistrict(item.districtId || "").find((upazila) => upazila.id === item.upazilaId)?.name || "";
+                                    return { ...item, village: e.target.value, address: [divisionName, districtName, upazilaName, e.target.value].filter(Boolean).join(", "), sameAsMain: false };
+                                  }),
+                                )
+                              }
+                            />
+                          </Field>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </Card>
@@ -800,11 +1162,13 @@ function BookingPage() {
 
           <div className="flex justify-end">
             <button
-              className={buttonPrimary + " h-12 px-8 text-base"}
-              onClick={handleSaveBooking}
+              className={buttonPrimary + " h-12 px-8 text-base disabled:cursor-not-allowed disabled:opacity-60"}
+              onClick={() => handleSaveBooking()}
+              disabled={isSaving}
+              aria-busy={isSaving}
             >
               <Save className="h-5 w-5" />
-              Save Booking
+              {isSaving ? "Saving..." : "Save Booking"}
             </button>
           </div>
         </div>
@@ -841,6 +1205,100 @@ function BookingPage() {
         onClose={() => setCameraFor(null)}
         onCapture={handleCameraCapture}
       />
+
+      {bookingComplete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="booking-complete-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-emerald-100 bg-white p-6 text-center shadow-2xl">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+              <CheckCircle2 className="h-9 w-9 text-emerald-600" />
+            </div>
+            <h2 id="booking-complete-title" className="mt-4 text-xl font-bold text-slate-900">
+              Booking Complete
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Room <span className="font-bold text-emerald-700">{bookingComplete.room}</span> has been booked successfully.
+            </p>
+            <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              <div className="font-semibold">{bookingComplete.customerName}</div>
+              <div className="mt-1 text-xs text-emerald-700">Booking ID: {bookingComplete.bookingId}</div>
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                className={buttonGhost + " justify-center"}
+                onClick={async () => {
+                  setBookingComplete(null);
+                  await resetForm();
+                }}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className={buttonPrimary + " justify-center"}
+                onClick={async () => {
+                  setBookingComplete(null);
+                  await resetForm();
+                }}
+              >
+                New Booking
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {duplicateGuest && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="duplicate-guest-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xl">
+                ⚠️
+              </div>
+              <div>
+                <h2 id="duplicate-guest-title" className="text-lg font-bold text-slate-900">
+                  Active guest found
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Phone number <span className="font-semibold text-slate-900">{duplicateGuest.phone}</span> is already checked in for <span className="font-semibold text-slate-900">{duplicateGuest.customerName}</span> in Room <span className="font-semibold text-slate-900">{duplicateGuest.room}</span>.
+                </p>
+                <p className="mt-2 text-sm font-medium text-amber-700">
+                  Do you want to create another booking for this family or group?
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                className={buttonGhost + " justify-center"}
+                onClick={() => setDuplicateGuest(null)}
+              >
+                No, Cancel
+              </button>
+              <button
+                type="button"
+                className={buttonPrimary + " justify-center"}
+                onClick={async () => {
+                  setDuplicateGuest(null);
+                  await handleSaveBooking({ skipDuplicateCheck: true });
+                }}
+              >
+                Yes, Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

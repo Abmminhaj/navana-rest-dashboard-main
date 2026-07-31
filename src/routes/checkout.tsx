@@ -46,6 +46,7 @@ interface CompletedInvoice {
   totalDue: number;
   finalDue: number;
   notes?: string;
+  additionalGuests?: { id: string; name: string; nid: string; phone: string; fatherName: string; address: string }[];
 }
 
 function nowHHMM() {
@@ -232,6 +233,11 @@ function CheckoutPage() {
                     <td className="px-4 py-3">
                       <div className="font-semibold text-foreground">{s.customer}</div>
                       <div className="text-[11px] text-muted-foreground">NID {s.nid}</div>
+                      {s.additionalGuests && s.additionalGuests.length > 0 && (
+                        <div className="mt-1 text-[11px] text-blue-600">
+                          + {s.additionalGuests.map((guest) => guest.name).join(", ")}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-foreground">{s.phone}</td>
                     <td className="px-4 py-3 text-muted-foreground">{s.checkIn}</td>
@@ -289,6 +295,11 @@ function CheckoutPage() {
               <div>
                 <h3 className="text-base font-bold text-foreground">Checkout — Room {active.room}</h3>
                 <p className="text-xs text-muted-foreground">{active.customer} · {active.phone}</p>
+                {active.additionalGuests && active.additionalGuests.length > 0 && (
+                  <p className="mt-1 text-xs text-blue-600">
+                    Additional Guests: {active.additionalGuests.map((guest) => guest.name).join(", ")}
+                  </p>
+                )}
               </div>
               <button onClick={() => setActive(null)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
                 <X className="h-4 w-4" />
@@ -416,6 +427,7 @@ function CheckoutPage() {
                       totalDue,
                       finalDue,
                       notes: checkoutNotes || undefined,
+                      additionalGuests: active.additionalGuests,
                     });
                   } catch (err) {
                     console.error("Could not prepare invoice popup:", err);
@@ -575,6 +587,18 @@ function CheckoutPage() {
                 <p className="text-xs text-gray-700">{inv.phone}</p>
                 {inv.nid && <p className="text-xs text-gray-700">NID: {inv.nid}</p>}
                 <p className="text-xs text-gray-700">{inv.address}</p>
+                {inv.additionalGuests && inv.additionalGuests.length > 0 && (
+                  <div className="mt-1 text-xs text-gray-700">
+                    <p>Additional Guests:</p>
+                    <ul className="ml-4 list-disc">
+                      {inv.additionalGuests.map((guest) => (
+                        <li key={guest.id}>
+                          {guest.name} · Phone: {guest.phone || "—"} · Father: {guest.fatherName || "—"} · NID: {guest.nid || "—"} · Address: {guest.address || "—"}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
               <div className="text-right">
                 <h3 className="mb-1 text-[11px] font-bold uppercase text-gray-500">Stay Details</h3>

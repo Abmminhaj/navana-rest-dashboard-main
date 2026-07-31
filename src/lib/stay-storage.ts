@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { mergeAdditionalGuests, parseAdditionalGuests } from "./additional-guest-storage";
 
 function rowToStay(row: any) {
   return {
@@ -27,6 +28,7 @@ function rowToStay(row: any) {
     nidPhoto: row.nid_photo,
     customerPhoto: row.customer_photo,
     notes: row.notes,
+    additionalGuests: parseAdditionalGuests(row.notes),
     deposits: (row.stay_deposits || []).map((d: any) => ({
       amount: Number(d.amount),
       date: d.date,
@@ -74,15 +76,17 @@ export async function saveActiveStay(stay: any) {
     previous_due: stay.previousDue || 0,
     nid_photo: stay.nidPhoto,
     customer_photo: stay.customerPhoto,
-    notes: stay.notes,
+    notes: mergeAdditionalGuests(stay.notes, stay.additionalGuests),
   });
 
   if (error) console.error("saveActiveStay failed:", error.message);
+  if (!error) window.dispatchEvent(new Event("activeStaysUpdated"));
 }
 
 export async function removeActiveStay(id: string) {
   const { error } = await supabase.from("active_stays").delete().eq("id", id);
   if (error) console.error("removeActiveStay failed:", error.message);
+  if (!error) window.dispatchEvent(new Event("activeStaysUpdated"));
 }
 
 export async function addDeposit(id: string, amount: number, date?: string) {

@@ -42,7 +42,12 @@ export async function searchAll(rawQuery: string, limit = 5): Promise<SearchResu
   const results: SearchResult[] = [];
 
   // 1) Currently checked-in guests (active stays)
-  const stays = await getActiveStays();
+  const [staysResult, historyResult, roomsResult] = await Promise.allSettled([
+    getActiveStays(),
+    getCustomerHistory(),
+    getRooms(),
+  ]);
+  const stays = staysResult.status === "fulfilled" ? staysResult.value : [];
   for (const s of stays) {
     if (matches(query, s.customer, s.phone, s.room, s.nid)) {
       results.push({
@@ -54,31 +59,55 @@ export async function searchAll(rawQuery: string, limit = 5): Promise<SearchResu
         highlightKey: s.id,
       });
     }
+    for (const guest of s.additionalGuests || []) {
+      if (matches(query, guest.name, guest.phone, guest.nid, guest.address, guest.fatherName)) {
+        results.push({
+          id: `guest-${s.id}-${guest.id}`,
+          type: "guest",
+          title: guest.name,
+          subtitle: `Additional Guest · Room ${s.room} · ${guest.phone || "—"}`,
+          route: "/checkout",
+          highlightKey: s.id,
+        });
+      }
+      if (results.filter((r) => r.type === "guest").length >= limit) break;
+    }
     if (results.filter((r) => r.type === "guest").length >= limit) break;
   }
 
   // 2) Past customer history (checked-out guests) — dedupe by phone
-  const history = await getCustomerHistory();
+  const history = historyResult.status === "fulfilled" ? historyResult.value : [];
   const seenPhones = new Set<string>();
   for (const r of history) {
-    const key = (r.phone || "").replace(/\D/g, "") || r.customer;
-    if (seenPhones.has(key)) continue;
-    if (matches(query, r.customer, r.phone, r.nid, r.address)) {
-      seenPhones.add(key);
-      results.push({
-        id: `customer-${key}`,
-        type: "customer",
-        title: r.customer,
-        subtitle: `${r.phone || "—"} · Last visit ${r.checkoutDate || "—"}`,
-        route: "/customers",
-        highlightKey: key,
-      });
+    const people = [
+      { name: r.customer, phone: r.phone, nid: r.nid, address: r.address },
+      ...(r.additionalGuests || []).map((guest) => ({
+        name: guest.name,
+        phone: guest.phone,
+        nid: guest.nid,
+        address: guest.address,
+      })),
+    ];
+    for (const person of people) {
+      const key = (person.phone || "").replace(/\D/g, "") || person.name;
+      if (seenPhones.has(key)) continue;
+      if (matches(query, person.name, person.phone, person.nid, person.address)) {
+        seenPhones.add(key);
+        results.push({
+          id: `customer-${key}`,
+          type: "customer",
+          title: person.name,
+          subtitle: `${person.phone || "—"} · Last visit ${r.checkoutDate || "—"}`,
+          route: "/customers",
+          highlightKey: key,
+        });
+      }
     }
     if (seenPhones.size >= limit) break;
   }
 
   // 3) Rooms
-  const rooms = await getRooms();
+  const rooms = roomsResult.status === "fulfilled" ? roomsResult.value : [];
   for (const room of rooms) {
     if (matches(query, room.number, room.type)) {
       results.push({

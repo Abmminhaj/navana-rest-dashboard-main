@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { mergeAdditionalGuests, parseAdditionalGuests } from "./additional-guest-storage";
 
 function rowToBooking(row: any) {
   return {
@@ -30,6 +31,7 @@ function rowToBooking(row: any) {
     due: Number(row.due),
     paymentMethod: row.payment_method,
     notes: row.notes,
+    additionalGuests: parseAdditionalGuests(row.notes),
   };
 }
 
@@ -75,7 +77,7 @@ export async function saveBooking(booking: any) {
     total_rent: booking.totalRent,
     due: booking.due,
     payment_method: booking.paymentMethod,
-    notes: booking.notes,
+    notes: mergeAdditionalGuests(booking.notes, booking.additionalGuests),
   });
 
   if (error) console.error("saveBooking failed:", error.message);

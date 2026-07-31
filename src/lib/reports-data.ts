@@ -1,5 +1,5 @@
 import { getBookings } from "./booking-storage";
-import { getCustomerHistory, type CustomerHistoryRecord } from "./customer-history-storage";
+import { getCustomerHistory, parseDuePayments, type CustomerHistoryRecord } from "./customer-history-storage";
 import { getActiveStays } from "./stay-storage";
 import { getExpenses } from "./expense-storage";
 import { getRooms } from "./room-storage";
@@ -115,6 +115,14 @@ export async function getReportData(period: ReportPeriod): Promise<PeriodRow[]> 
       })
       .reduce((sum, r) => sum + (Number(r.remaining) || 0), 0);
 
+    const duePaymentIncome = history
+      .flatMap((r) => parseDuePayments(r.checkoutNotes))
+      .filter((p) => {
+        const d = parseDateOnly(p.date);
+        return d && d >= start && d < end;
+      })
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
     const expense = expenses
       .filter((e) => {
         const d = parseDateOnly(e.date);
@@ -133,7 +141,7 @@ export async function getReportData(period: ReportPeriod): Promise<PeriodRow[]> 
 
     const occupancy = Math.max(0, Math.min(100, Math.round((occupiedNights / (totalRooms * periodDays)) * 100)));
 
-    const income = bookingIncome + checkoutIncome;
+    const income = bookingIncome + checkoutIncome + duePaymentIncome;
 
     return { label, income, expense, profit: income - expense, occupancy };
   });

@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import type { ActiveStay } from "./mock-data";
+import { mergeAdditionalGuests, parseAdditionalGuests } from "./additional-guest-storage";
 
 export interface CustomerHistoryRecord extends ActiveStay {
   checkoutDate: string;
@@ -8,6 +9,34 @@ export interface CustomerHistoryRecord extends ActiveStay {
   checkoutNotes?: string;
   actualNights?: number;
   due?: number;
+  isAdditionalGuest?: boolean;
+}
+
+export interface DuePayment {
+  id: string;
+  amount: number;
+  date: string;
+  method: string;
+  note?: string;
+}
+
+const DUE_PAYMENT_MARKER = "__NAVANA_DUE_PAYMENTS__";
+
+export function parseDuePayments(notes?: string | null): DuePayment[] {
+  if (!notes) return [];
+  const markerIndex = notes.indexOf(DUE_PAYMENT_MARKER);
+  if (markerIndex < 0) return [];
+  try {
+    const parsed = JSON.parse(notes.slice(markerIndex + DUE_PAYMENT_MARKER.length).trim());
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function mergeDuePayments(notes: string | undefined, payments: DuePayment[]) {
+  const baseNotes = (notes || "").split(DUE_PAYMENT_MARKER)[0].trimEnd();
+  return `${baseNotes}${baseNotes ? "\n\n" : ""}${DUE_PAYMENT_MARKER}${JSON.stringify(payments)}`;
 }
 
 function rowToHistory(row: any): CustomerHistoryRecord {
@@ -37,6 +66,7 @@ function rowToHistory(row: any): CustomerHistoryRecord {
     deposits: row.deposits || [],
     nidPhoto: row.nid_photo,
     customerPhoto: row.customer_photo,
+    additionalGuests: parseAdditionalGuests(row.notes),
     notes: row.notes,
     checkoutDate: row.checkout_date,
     checkoutTime: row.checkout_time,
@@ -88,7 +118,7 @@ export async function saveCustomerHistory(customer: CustomerHistoryRecord) {
     deposits: customer.deposits || [],
     nid_photo: customer.nidPhoto,
     customer_photo: customer.customerPhoto,
-    notes: customer.notes,
+    notes: mergeAdditionalGuests(customer.notes, customer.additionalGuests),
     checkout_date: customer.checkoutDate,
     checkout_time: customer.checkoutTime,
     payment_method: customer.paymentMethod,
@@ -98,4 +128,36 @@ export async function saveCustomerHistory(customer: CustomerHistoryRecord) {
   });
 
   if (error) console.error("saveCustomerHistory failed:", error.message);
+}
+
+export async function recordDuePayment(
+  record: CustomerHistoryRecord,
+  amount: number,
+  date: string,
+  method: string,
+  note?: string,
+) {
+  const due = Number(record.due) || 0;
+  const paymentAmount = Math.min(Math.max(0, amount), due);
+  if (!record.id || paymentAmount <= 0) return false;
+
+  const payments = [
+    ...parseDuePayments(record.checkoutNotes),
+    { id: crypto.randomUUID(), amount: paymentAmount, date, method, note },
+  ];
+  const { error } = await supabase
+    .from("customer_history")
+    .update({
+      due: Math.max(0, due - paymentAmount),
+      checkout_notes: mergeDuePayments(record.checkoutNotes, payments),
+    })
+    .eq("id", record.id);
+
+  if (error) {
+    console.error("recordDuePayment failed:", error.message);
+    return false;
+  }
+
+  window.dispatchEvent(new Event("customerHistoryUpdated"));
+  return true;
 }

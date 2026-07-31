@@ -4,6 +4,7 @@ import { Bell, Search, Hotel, ChevronDown, X, BedDouble, UserRound, History, Log
 import { getNotificationLog, markAllRead, markRead, type NotificationLogEntry } from "@/lib/notification-log-storage";
 import { searchAll, searchResultTypeLabel, type SearchResult, type SearchResultType } from "@/lib/global-search";
 import { getCurrentUser, logout, canAccess } from "@/lib/auth-storage";
+import { getActiveStays } from "@/lib/stay-storage";
 
 const navItems = [
   { to: "/", label: "Dashboard" },
@@ -114,6 +115,33 @@ function NotificationBell() {
   );
 }
 
+function CheckoutPendingBadge() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const stays = await getActiveStays();
+      if (!cancelled) setCount(stays.length);
+    }
+    load();
+    const interval = window.setInterval(load, 30000);
+    window.addEventListener("activeStaysUpdated", load);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener("activeStaysUpdated", load);
+    };
+  }, []);
+
+  if (count === 0) return null;
+  return (
+    <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
 const RESULT_ICON: Record<SearchResultType, typeof UserRound> = {
   guest: UserRound,
   customer: History,
@@ -134,9 +162,14 @@ function NavSearch() {
       setResults([]);
       return;
     }
-    searchAll(q).then((res) => {
-      if (!cancelled) setResults(res);
-    });
+    searchAll(q)
+      .then((res) => {
+        if (!cancelled) setResults(res);
+      })
+      .catch((error) => {
+        console.error("Global search failed:", error);
+        if (!cancelled) setResults([]);
+      });
     return () => {
       cancelled = true;
     };
@@ -170,7 +203,7 @@ function NavSearch() {
   };
 
   return (
-    <div className="relative hidden md:block w-80" ref={ref}>
+    <div className="relative w-56 sm:w-72" ref={ref}>
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <input
         type="text"
@@ -179,6 +212,9 @@ function NavSearch() {
         onChange={(e) => {
           setQuery(e.target.value);
           setOpen(true);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && results[0]) goTo(results[0]);
         }}
         onFocus={() => setOpen(true)}
         className="h-10 w-full rounded-lg border border-border bg-background pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -326,6 +362,7 @@ export function TopNav({ className = "" }: { className?: string }) {
               }}
             >
               {item.label}
+              {item.to === "/checkout" && <CheckoutPendingBadge />}
             </Link>
           ))}
 
@@ -333,10 +370,10 @@ export function TopNav({ className = "" }: { className?: string }) {
           {canAccess(user, settingsItem.to) && (
             <Link
               to={settingsItem.to}
-              className="relative ml-auto whitespace-nowrap px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground data-[status=active]:text-primary"
+              className="relative ml-auto my-2 inline-flex whitespace-nowrap rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
               activeProps={{
                 className:
-                  "relative ml-auto whitespace-nowrap px-4 py-3 text-sm font-semibold text-primary after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary",
+                  "relative ml-auto my-2 inline-flex whitespace-nowrap rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm ring-2 ring-primary/30",
               }}
             >
               {settingsItem.label}

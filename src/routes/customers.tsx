@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Search, Printer, X, ImageOff } from "lucide-react";
+import { Search, Printer, X, ImageOff, Wallet } from "lucide-react";
 import { Card, Field, PageHeader, SectionTitle, buttonGhost, buttonPrimary, inputClass } from "@/components/ui-kit";
-import { getCustomerHistory, type CustomerHistoryRecord } from "@/lib/customer-history-storage";
+import { getCustomerHistory, parseDuePayments, recordDuePayment, type CustomerHistoryRecord } from "@/lib/customer-history-storage";
 import { PrintLetterhead } from "@/components/PrintLetterhead";
 
 export const Route = createFileRoute("/customers")({
@@ -42,9 +42,28 @@ function parseDate(value: string | undefined) {
 }
 
 function buildProfiles(history: CustomerHistoryRecord[]): CustomerProfile[] {
+  const expandedHistory = history.flatMap((record) => [
+    record,
+    ...(record.additionalGuests || []).map((guest) => ({
+      ...record,
+      id: `${record.id}-guest-${guest.id}`,
+      customer: guest.name,
+      fatherName: guest.fatherName || "",
+      phone: guest.phone || "",
+      nid: guest.nid || "",
+      address: guest.address || record.address,
+      advance: 0,
+      remaining: 0,
+      deposits: [],
+      previousDue: 0,
+      due: 0,
+      additionalGuests: [],
+      isAdditionalGuest: true,
+    })),
+  ]);
   const groups = new Map<string, CustomerHistoryRecord[]>();
 
-  for (const record of history) {
+  for (const record of expandedHistory) {
     const key = (record.phone || "").replace(/\D/g, "") || record.customer || "unknown";
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(record);
@@ -94,11 +113,20 @@ function CustomersPage() {
   const [selected, setSelected] = useState<CustomerProfile | null>(null);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [showDueOnly, setShowDueOnly] = useState(false);
+  const [dueTarget, setDueTarget] = useState<CustomerHistoryRecord | null>(null);
+  const [dueAmount, setDueAmount] = useState("");
+  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
+  const [dueMethod, setDueMethod] = useState("Cash");
+  const [dueNote, setDueNote] = useState("");
 
   useEffect(() => {
-    (async () => {
+    async function loadHistory() {
       setHistory(await getCustomerHistory());
-    })();
+    }
+    loadHistory();
+    window.addEventListener("customerHistoryUpdated", loadHistory);
+    return () => window.removeEventListener("customerHistoryUpdated", loadHistory);
   }, []);
 
   const profiles = useMemo(() => buildProfiles(history), [history]);
@@ -113,30 +141,54 @@ function CustomersPage() {
   }, [highlight, profiles]);
 
  const filtered = useMemo(() => {
-  return profiles.filter((p) => {
-    const bookingIds = p.records.map((r) => r.bookingId || "").join(" ");
-    const textMatch = `${p.name} ${p.phone} ${p.nid} ${p.address} ${bookingIds}`
-      .toLowerCase()
-      .includes(query.toLowerCase());
-
-    if (!textMatch) return false;
-
+  const matchesDateRange = (p: CustomerProfile) => {
     if (!fromDate && !toDate) return true;
 
     const visit = new Date(p.lastVisit);
-
     if (fromDate && visit < new Date(fromDate)) return false;
 
     if (toDate) {
       const end = new Date(toDate);
       end.setHours(23, 59, 59, 999);
-
       if (visit > end) return false;
     }
 
     return true;
+  };
+
+  const directMatches = profiles.filter((p) => {
+    const bookingIds = p.records.map((r) => r.bookingId || "").join(" ");
+    return `${p.name} ${p.phone} ${p.nid} ${p.address} ${bookingIds}`
+      .toLowerCase()
+      .includes(query.toLowerCase()) && matchesDateRange(p) && (!showDueOnly || p.outstandingDue > 0);
   });
-}, [profiles, query, fromDate, toDate]);
+
+  const linkedBookingIds = new Set(
+    directMatches.flatMap((profile) => profile.records.map((record) => record.bookingId).filter(Boolean)),
+  );
+
+  return profiles.filter((profile) => {
+    const isDirectMatch = directMatches.includes(profile);
+    const isLinkedGuest = profile.records.some((record) => linkedBookingIds.has(record.bookingId));
+    if (!isDirectMatch && !isLinkedGuest) return false;
+    if (!matchesDateRange(profile)) return false;
+    if (showDueOnly && profile.outstandingDue <= 0) return false;
+    return true;
+  });
+}, [profiles, query, fromDate, toDate, showDueOnly]);
+
+const totalDue = profiles.reduce((sum, profile) => sum + profile.outstandingDue, 0);
+
+async function handleDuePayment() {
+  if (!dueTarget) return;
+  const amount = Number(dueAmount);
+  if (!amount || amount <= 0) return;
+  const saved = await recordDuePayment(dueTarget, amount, dueDate, dueMethod, dueNote || undefined);
+  if (!saved) return;
+  setDueTarget(null);
+  setDueAmount("");
+  setDueNote("");
+}
 
 function exportExcel() {
   const rows = filtered.flatMap((p) =>
@@ -204,6 +256,12 @@ function exportExcel() {
               />
             </div>
             <div className="flex items-center gap-2">
+  <button
+    onClick={() => setShowDueOnly((value) => !value)}
+    className={showDueOnly ? buttonPrimary : buttonGhost}
+  >
+    <Wallet className="h-4 w-4" /> Due ৳{totalDue.toLocaleString()}
+  </button>
   <input
     type="date"
     value={fromDate}
@@ -271,7 +329,21 @@ function exportExcel() {
                     </td>
                     <td className="px-4 py-3 text-right font-semibold">
                       {p.outstandingDue > 0 ? (
-                        <span className="text-amber-600">৳{p.outstandingDue.toLocaleString()}</span>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-amber-600">৳{p.outstandingDue.toLocaleString()}</span>
+                          <button
+                            className="text-xs font-semibold text-primary hover:underline"
+                            onClick={() => {
+                              const target = p.records.find((record) => (Number(record.due) || 0) > 0);
+                              if (!target) return;
+                              setDueTarget(target);
+                              setDueAmount(String(target.due));
+                              setDueDate(new Date().toISOString().slice(0, 10));
+                            }}
+                          >
+                            Pay Due
+                          </button>
+                        </div>
                       ) : (
                         <span className="text-emerald-600">৳0</span>
                       )}
@@ -292,6 +364,59 @@ function exportExcel() {
           </div>
         </Card>
       </div>
+
+      {dueTarget && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Clear Customer Due</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{dueTarget.customer} · Room {dueTarget.room}</p>
+              </div>
+              <button onClick={() => setDueTarget(null)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Current due: <span className="font-bold">৳{(Number(dueTarget.due) || 0).toLocaleString()}</span>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <Field label="Payment Date">
+                <input type="date" className={inputClass} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              </Field>
+              <Field label="Amount (৳)">
+                <input type="number" className={inputClass} value={dueAmount} onChange={(e) => setDueAmount(e.target.value)} />
+              </Field>
+              <Field label="Payment Method">
+                <select className={inputClass} value={dueMethod} onChange={(e) => setDueMethod(e.target.value)}>
+                  <option>Cash</option><option>bKash</option><option>Nagad</option><option>Card</option><option>Bank Transfer</option>
+                </select>
+              </Field>
+              <div className="md:col-span-2">
+                <Field label="Note (Optional)">
+                  <input className={inputClass} placeholder="e.g. Paid from home by bKash" value={dueNote} onChange={(e) => setDueNote(e.target.value)} />
+                </Field>
+              </div>
+            </div>
+            {parseDuePayments(dueTarget.checkoutNotes).length > 0 && (
+              <div className="mt-4 rounded-lg border border-border p-3 text-xs">
+                <p className="mb-2 font-semibold text-foreground">Previous Due Payments</p>
+                <div className="space-y-1 text-muted-foreground">
+                  {parseDuePayments(dueTarget.checkoutNotes).map((payment) => (
+                    <div key={payment.id} className="flex justify-between gap-3">
+                      <span>{payment.date} · {payment.method}</span><span>৳{payment.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="mt-6 flex justify-end gap-2">
+              <button className={buttonGhost} onClick={() => setDueTarget(null)}>Cancel</button>
+              <button className={buttonPrimary} onClick={handleDuePayment}>Save Payment</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selected && (
         <>
@@ -356,6 +481,30 @@ function exportExcel() {
                     </div>
                   </div>
                 </div>
+
+                {selected.records.some((record) => (record.additionalGuests || []).length > 0) && (
+                  <div>
+                    <SectionTitle title="Additional Guests" />
+                    <div className="mt-3 space-y-2">
+                      {selected.records.flatMap((record) =>
+                        (record.additionalGuests || []).map((guest) => (
+                          <div key={`${record.bookingId}-${guest.id}`} className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm">
+                            <div>
+                              <span className="font-semibold text-foreground">{guest.name}</span>
+                              <span className="ml-2 text-xs text-muted-foreground">Room {record.room}</span>
+                            </div>
+                            <div className="text-right text-xs text-muted-foreground">
+                              {guest.phone && <div>Phone: {guest.phone}</div>}
+                              {guest.fatherName && <div>Father: {guest.fatherName}</div>}
+                              {guest.nid && <div>NID: {guest.nid}</div>}
+                              {guest.address && <div>Address: {guest.address}</div>}
+                            </div>
+                          </div>
+                        )),
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <SectionTitle title="Room / Stay History" />
@@ -487,6 +636,21 @@ function exportExcel() {
                 <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">Address</h2>
                 <p className="text-sm">{selected.address || "—"}</p>
               </div>
+
+              {selected.records.some((record) => (record.additionalGuests || []).length > 0) && (
+                <div className="mb-5">
+                  <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">Additional Guests</h2>
+                  <ul className="space-y-1 text-sm">
+                    {selected.records.flatMap((record) =>
+                      (record.additionalGuests || []).map((guest) => (
+                        <li key={`${record.bookingId}-${guest.id}`}>
+                          {guest.name}{guest.phone ? ` — Phone: ${guest.phone}` : ""}{guest.nid ? ` — NID: ${guest.nid}` : ""} (Room {record.room})
+                        </li>
+                      )),
+                    )}
+                  </ul>
+                </div>
+              )}
 
               <div className="mb-5">
                 <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase">Stay Details</h2>

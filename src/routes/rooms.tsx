@@ -50,6 +50,7 @@ const statusStyles: Record<
 
 function RoomsPage() {
   const [filter, setFilter] = useState<RoomStatus | "All">("All");
+  const [typeFilter, setTypeFilter] = useState("All Types");
   const [rooms, setRooms] = useState<Room[]>([]);
 
   useEffect(() => {
@@ -228,7 +229,12 @@ function RoomsPage() {
     Cleaning: rooms.filter((r) => r.status === "Cleaning").length,
   };
 
-  const visible = filter === "All" ? rooms : rooms.filter((r) => r.status === filter);
+  const roomTypes = Array.from(new Set(rooms.map((room) => room.type))).sort();
+  const visible = rooms.filter(
+    (room) =>
+      (filter === "All" || room.status === filter) &&
+      (typeFilter === "All Types" || room.type === typeFilter),
+  );
 
   const byFloor = visible.reduce<Record<number, typeof rooms>>((acc, r) => {
     (acc[r.floor] ||= []).push(r);
@@ -283,6 +289,23 @@ function RoomsPage() {
             <span className={`text-sm font-bold ${getRoomTypeColor(t)}`}>●</span>
             {t}
           </span>
+        ))}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-xs font-semibold text-muted-foreground">Room Type:</span>
+        {["All Types", ...roomTypes].map((type) => (
+          <button
+            key={type}
+            onClick={() => setTypeFilter(type)}
+            className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+              typeFilter === type
+                ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"
+            }`}
+          >
+            {type}
+          </button>
         ))}
       </div>
 

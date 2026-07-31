@@ -22,6 +22,8 @@ import {
   getDamageLostHistory,
   addDamageLostForAsset,
   addDamageLostForConsumable,
+  deleteDamageLost,
+  restoreDamageLost,
   type Asset,
   type Consumable,
   type StockInEntry,
@@ -67,6 +69,7 @@ function conditionTone(condition: AssetCondition) {
 
 function InventoryPage() {
   const [tab, setTab] = useState<Tab>("Assets");
+  const [stockFilter, setStockFilter] = useState<"low" | "out" | null>(null);
 
   const [assets, setAssets] = useState<Asset[]>([]);
   const [consumables, setConsumables] = useState<Consumable[]>([]);
@@ -111,6 +114,17 @@ function InventoryPage() {
     return { totalAssets, good, repair, damaged, lost, totalConsumables, lowStock, outOfStock };
   }, [assets, consumables]);
 
+  const filteredStockItems = useMemo(() => {
+    if (stockFilter === "out") return consumables.filter((c) => c.currentStock <= 0);
+    if (stockFilter === "low") return consumables.filter((c) => c.currentStock > 0 && c.currentStock <= c.minimumStock);
+    return [];
+  }, [consumables, stockFilter]);
+
+  function openStockFilter(filter: "low" | "out") {
+    setStockFilter(filter);
+    setTab("Consumables");
+  }
+
   return (
     <div>
       <PageHeader
@@ -150,7 +164,10 @@ function InventoryPage() {
           <div className="mt-1 text-2xl font-bold text-foreground">{dashboard.totalConsumables}</div>
         </Card>
 
-        <Card className="p-5">
+        <Card
+          className={`cursor-pointer p-5 transition hover:-translate-y-0.5 hover:shadow-md ${stockFilter === "low" ? "ring-2 ring-amber-400" : ""}`}
+          onClick={() => openStockFilter("low")}
+        >
           <div className="flex items-center justify-between">
             <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
               <AlertTriangle className="h-4 w-4" />
@@ -162,7 +179,10 @@ function InventoryPage() {
           <div className="mt-1 text-2xl font-bold text-foreground">{dashboard.lowStock}</div>
         </Card>
 
-        <Card className="p-5">
+        <Card
+          className={`cursor-pointer p-5 transition hover:-translate-y-0.5 hover:shadow-md ${stockFilter === "out" ? "ring-2 ring-red-400" : ""}`}
+          onClick={() => openStockFilter("out")}
+        >
           <div className="flex items-center justify-between">
             <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-red-50 text-red-500">
               <PackageMinus className="h-4 w-4" />
@@ -174,6 +194,41 @@ function InventoryPage() {
           <div className="mt-1 text-2xl font-bold text-foreground">{dashboard.outOfStock}</div>
         </Card>
       </div>
+
+      {stockFilter && (
+        <Card className="mt-4 overflow-hidden border-amber-200">
+          <div className="flex items-center justify-between border-b border-border px-5 py-3">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">
+                {stockFilter === "low" ? "Low Stock Items" : "Out of Stock Items"}
+              </h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">কোন item-এর stock attention দরকার তা এখানে দেখা যাচ্ছে।</p>
+            </div>
+            <button type="button" className="text-xs font-semibold text-muted-foreground hover:text-foreground" onClick={() => setStockFilter(null)}>
+              Hide
+            </button>
+          </div>
+          {filteredStockItems.length === 0 ? (
+            <div className="px-5 py-6 text-sm text-muted-foreground">এই category-তে কোনো item নেই।</div>
+          ) : (
+            <div className="divide-y divide-border">
+              {filteredStockItems.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  className="flex w-full items-center justify-between px-5 py-3 text-left hover:bg-muted/30"
+                  onClick={() => setTab("Consumables")}
+                >
+                  <span className="font-semibold text-foreground">{item.itemName}</span>
+                  <span className={`text-sm font-semibold ${item.currentStock <= 0 ? "text-red-600" : "text-amber-600"}`}>
+                    {item.currentStock} {item.unit} <span className="ml-1 text-xs font-normal text-muted-foreground">(minimum {item.minimumStock})</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Tabs */}
       <div className="mt-6 mb-6 inline-flex flex-wrap rounded-xl border border-border bg-card p-1">
@@ -191,7 +246,7 @@ function InventoryPage() {
       </div>
 
       {tab === "Assets" && <AssetsTab assets={assets} />}
-      {tab === "Consumables" && <ConsumablesTab consumables={consumables} />}
+      {tab === "Consumables" && <ConsumablesTab consumables={consumables} stockFilter={stockFilter} />}
       {tab === "Stock In" && <StockInTab consumables={consumables} history={stockIn} />}
       {tab === "Stock Out" && <StockOutTab consumables={consumables} history={stockOut} />}
       {tab === "Damage / Lost" && (
@@ -341,7 +396,7 @@ function AssetsTab({ assets }: { assets: Asset[] }) {
 // Consumables Tab
 // =========================================================
 
-function ConsumablesTab({ consumables }: { consumables: Consumable[] }) {
+function ConsumablesTab({ consumables, stockFilter }: { consumables: Consumable[]; stockFilter: "low" | "out" | null }) {
   const [showForm, setShowForm] = useState(false);
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("");
@@ -351,6 +406,12 @@ function ConsumablesTab({ consumables }: { consumables: Consumable[] }) {
   const [location, setLocation] = useState(ASSET_LOCATIONS[0]);
   const [remarks, setRemarks] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const visibleConsumables = stockFilter === "out"
+    ? consumables.filter((c) => c.currentStock <= 0)
+    : stockFilter === "low"
+      ? consumables.filter((c) => c.currentStock > 0 && c.currentStock <= c.minimumStock)
+      : consumables;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -378,7 +439,10 @@ function ConsumablesTab({ consumables }: { consumables: Consumable[] }) {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">Consumables</h3>
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Consumables</h3>
+          {stockFilter && <p className="mt-1 text-xs text-muted-foreground">Showing {stockFilter === "low" ? "low stock" : "out of stock"} items</p>}
+        </div>
         <button className={buttonPrimary} onClick={() => setShowForm((v) => !v)}>
           <Plus className="h-4 w-4" />
           {showForm ? "Cancel" : "Add Consumable"}
@@ -447,14 +511,14 @@ function ConsumablesTab({ consumables }: { consumables: Consumable[] }) {
               </tr>
             </thead>
             <tbody>
-              {consumables.length === 0 ? (
+              {visibleConsumables.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
                     কোনো Consumable পাওয়া যায়নি
                   </td>
                 </tr>
               ) : (
-                consumables.map((c) => {
+                visibleConsumables.map((c) => {
                   const isOut = c.currentStock <= 0;
                   const isLow = !isOut && c.currentStock <= c.minimumStock;
                   return (
@@ -847,12 +911,13 @@ function DamageLostTab({
                 <th className="px-4 py-3">Item</th>
                 <th className="px-4 py-3 text-right">Quantity</th>
                 <th className="px-4 py-3">Reason</th>
+                <th className="px-4 py-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody>
               {history.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
                     কোনো Data পাওয়া যায়নি
                   </td>
                 </tr>
@@ -864,6 +929,32 @@ function DamageLostTab({
                     <td className="px-4 py-3 font-semibold text-foreground">{h.itemName}</td>
                     <td className="px-4 py-3 text-right text-red-500">{h.quantity}</td>
                     <td className="px-4 py-3 text-muted-foreground">{h.reason || "—"}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          className="rounded-md border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                          onClick={async () => {
+                            if (window.confirm("এই record restore করলে inventory-তে item/stock ফিরে আসবে। Continue?")) {
+                              await restoreDamageLost(h);
+                            }
+                          }}
+                        >
+                          Restore
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                          onClick={async () => {
+                            if (window.confirm("এই damage/lost history delete করবেন? Inventory status অপরিবর্তিত থাকবে।")) {
+                              await deleteDamageLost(h.id);
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}

@@ -102,7 +102,7 @@ async function checkDailySummary() {
 // Fired right when a guest checks in (called from booking.tsx)
 export function notifyCheckIn(customerName: string, room: string, bookingId: string) {
   const prefs = getNotificationPrefs();
-  if (!prefs.paymentReceivedAlerts) return;
+  if (!prefs.checkInAlerts) return;
 
   fireNotification(
     "New Check-in",
@@ -113,7 +113,7 @@ export function notifyCheckIn(customerName: string, room: string, bookingId: str
 // Fired right when a guest checks out (called from checkout.tsx)
 export function notifyCheckOut(customerName: string, room: string, due: number) {
   const prefs = getNotificationPrefs();
-  if (!prefs.paymentReceivedAlerts) return;
+  if (!prefs.checkOutAlerts) return;
 
   fireNotification(
     "Guest Checked Out",
