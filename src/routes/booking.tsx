@@ -135,6 +135,7 @@ function BookingPage() {
     phone: string;
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   const [additionalGuests, setAdditionalGuests] = useState<AdditionalGuest[]>([]);
   const customerNameRef = useRef<HTMLInputElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
@@ -262,9 +263,7 @@ function BookingPage() {
 
   const due = totalRent - (Number(advancePayment) || 0) + (Number(previousDue) || 0);
 
-  async function handleSaveBooking(options?: { skipDuplicateCheck?: boolean }) {
-    if (isSaving) return;
-    setIsSaving(true);
+  function handleReviewBooking() {
     setValidationAttempted(true);
     const missingFields: string[] = [];
     if (!customerName.trim()) missingFields.push("Customer Name");
@@ -282,7 +281,6 @@ function BookingPage() {
     });
 
     if (missingFields.length > 0) {
-      setIsSaving(false);
       setValidationError(`Booking save করতে এই তথ্যগুলো দিতে হবে: ${missingFields.join(", ")}`);
       const firstMissingRef = !customerName.trim()
         ? customerNameRef
@@ -299,6 +297,13 @@ function BookingPage() {
     }
 
     setValidationError("");
+    setShowReview(true);
+  }
+
+  async function handleConfirmBooking(options?: { skipDuplicateCheck?: boolean }) {
+    if (isSaving) return;
+    setIsSaving(true);
+    setShowReview(false);
 
     if (!options?.skipDuplicateCheck) {
       const normalizedPhone = phone.replace(/\D/g, "");
@@ -390,6 +395,11 @@ function BookingPage() {
     setIsSaving(false);
   }
 
+  function handleCancelBooking() {
+    setShowReview(false);
+    resetForm();
+  }
+
   async function resetForm() {
     setPhone("");
     setSelectedRoom("");
@@ -426,6 +436,11 @@ function BookingPage() {
     setValidationError("");
     setValidationAttempted(false);
     setIsSaving(false);
+
+    // New Booking / Close / Cancel Booking all reset the form — scroll back
+    // to the top so the person lands on Name/Father's Name again, instead of
+    // staying wherever they'd scrolled to before.
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   return (
@@ -437,7 +452,7 @@ function BookingPage() {
           <>
             <button
               className={buttonPrimary + " disabled:cursor-not-allowed disabled:opacity-60"}
-              onClick={() => handleSaveBooking()}
+              onClick={handleReviewBooking}
               disabled={isSaving}
               aria-busy={isSaving}
             >
@@ -1270,7 +1285,7 @@ function BookingPage() {
                 buttonPrimary +
                 " h-12 px-8 text-base disabled:cursor-not-allowed disabled:opacity-60"
               }
-              onClick={() => handleSaveBooking()}
+              onClick={handleReviewBooking}
               disabled={isSaving}
               aria-busy={isSaving}
             >
@@ -1308,6 +1323,122 @@ function BookingPage() {
         onClose={() => setCameraFor(null)}
         onCapture={handleCameraCapture}
       />
+
+      {showReview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="review-booking-title"
+        >
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="sticky top-0 z-10 border-b border-border bg-card px-6 py-4">
+              <h2 id="review-booking-title" className="text-lg font-bold text-foreground">
+                Booking-টা একবার দেখে নিন
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                সব ঠিক থাকলে Confirm করুন, নাহলে Edit করে ঠিক করে নিতে পারবেন
+              </p>
+            </div>
+
+            <div className="space-y-4 px-6 py-4">
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Customer
+                </p>
+                <dl className="space-y-1.5 text-sm">
+                  <Row label="Name" value={customerName || "—"} />
+                  <Row label="Phone" value={phone || "—"} />
+                  <Row label="Father's Name" value={fatherName || "—"} />
+                  {nid && <Row label="NID" value={nid} />}
+                  <Row label="Address" value={fullAddress || "—"} />
+                </dl>
+              </div>
+
+              {additionalGuests.length > 0 && (
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Additional Guests
+                  </p>
+                  <ul className="space-y-1 text-sm text-foreground">
+                    {additionalGuests.map((g, i) => (
+                      <li key={i}>
+                        {g.name || `Guest ${i + 1}`}
+                        {g.phone ? ` — ${g.phone}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Room &amp; Stay
+                </p>
+                <dl className="space-y-1.5 text-sm">
+                  <Row
+                    label="Room"
+                    value={selectedRoom ? `${selectedRoom} (${roomInfo?.type || ""})` : "—"}
+                  />
+                  <Row label="Check-in" value={`${checkInDate} ${checkInTime}`} />
+                  <Row label="Expected Check-out" value={`${checkOutDate} ${checkOutTime}`} />
+                  <Row label="Nights" value={String(nights)} />
+                </dl>
+              </div>
+
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Payment
+                </p>
+                <dl className="space-y-1.5 text-sm">
+                  <Row label="Room Rent" value={`৳${roomRent || 0}`} />
+                  {Number(discount) > 0 && <Row label="Discount" value={`৳${discount}`} />}
+                  <Row label="Total Rent" value={`৳${totalRent}`} />
+                  <Row label="Advance Payment" value={`৳${advancePayment || 0}`} />
+                  <Row label="Payment Method" value={paymentMethod} />
+                  <Row label="Due" value={`৳${due}`} bold />
+                </dl>
+              </div>
+
+              {notes && (
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Notes
+                  </p>
+                  <p className="text-sm text-foreground">{notes}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-border bg-card px-6 py-4 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={handleCancelBooking}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+              >
+                Cancel Booking
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowReview(false)}
+                className={buttonGhost + " justify-center"}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => handleConfirmBooking()}
+                disabled={isSaving}
+                className={
+                  buttonPrimary + " justify-center disabled:cursor-not-allowed disabled:opacity-60"
+                }
+              >
+                {isSaving ? "Saving..." : "Confirm Booking"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {bookingComplete && (
         <div
@@ -1403,7 +1534,7 @@ function BookingPage() {
                 className={buttonPrimary + " justify-center"}
                 onClick={async () => {
                   setDuplicateGuest(null);
-                  await handleSaveBooking({ skipDuplicateCheck: true });
+                  await handleConfirmBooking({ skipDuplicateCheck: true });
                 }}
               >
                 Yes, Continue
