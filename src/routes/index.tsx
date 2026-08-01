@@ -22,7 +22,11 @@ import { type Room, type Expense } from "@/lib/mock-data";
 import { getRooms } from "@/lib/room-storage";
 import { getActiveStays } from "@/lib/stay-storage";
 import { getBookings } from "@/lib/booking-storage";
-import { getCustomerHistory, type CustomerHistoryRecord } from "@/lib/customer-history-storage";
+import {
+  getCustomerHistory,
+  parseDuePayments,
+  type CustomerHistoryRecord,
+} from "@/lib/customer-history-storage";
 import { getExpenses } from "@/lib/expense-storage";
 import { getAdminDisplayName } from "@/lib/settings-storage";
 
@@ -98,11 +102,19 @@ function useMonthlyFinancials(
         .filter((r) => (r.checkoutDate || "").startsWith(key))
         .reduce((sum, r) => sum + (Number(r.remaining) || 0), 0);
 
+      // Payments made later to clear a guest's due are also real income —
+      // this must match the same calculation used in Reports (reports-data.ts),
+      // otherwise Dashboard and Reports show different income numbers.
+      const duePaymentIncome = history
+        .flatMap((r) => parseDuePayments(r.checkoutNotes))
+        .filter((p) => (p.date || "").startsWith(key))
+        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
       const expense = expenses
         .filter((e) => e.date.startsWith(key))
         .reduce((sum, e) => sum + e.amount, 0);
 
-      const income = bookingIncome + checkoutIncome;
+      const income = bookingIncome + checkoutIncome + duePaymentIncome;
 
       return { month, income, expense, profit: income - expense };
     });
@@ -177,6 +189,7 @@ function Dashboard() {
       delta: "New bookings today",
       icon: CalendarCheck,
       tone: "text-primary bg-primary-soft",
+      to: "/booking",
     },
     {
       label: "Occupied Rooms",
@@ -184,6 +197,8 @@ function Dashboard() {
       delta: `of ${rooms.length} rooms`,
       icon: BedDouble,
       tone: "text-rose-600 bg-rose-50",
+      to: "/rooms",
+      search: { status: "Occupied" },
     },
     {
       label: "Available Rooms",
@@ -191,6 +206,8 @@ function Dashboard() {
       delta: "ready to assign",
       icon: DoorOpen,
       tone: "text-emerald-600 bg-emerald-50",
+      to: "/rooms",
+      search: { status: "Available" },
     },
     {
       label: "Today's Income",
@@ -198,6 +215,7 @@ function Dashboard() {
       delta: "Advance + checkout collections",
       icon: TrendingUp,
       tone: "text-emerald-600 bg-emerald-50",
+      to: "/reports",
     },
     {
       label: "Today's Expense",
@@ -205,6 +223,7 @@ function Dashboard() {
       delta: "Recorded on the Expenses page",
       icon: TrendingDown,
       tone: "text-amber-600 bg-amber-50",
+      to: "/expenses",
     },
     {
       label: "Today's Profit",
@@ -212,6 +231,7 @@ function Dashboard() {
       delta: "Income minus today's expense",
       icon: Wallet,
       tone: "text-primary bg-primary-soft",
+      to: "/reports",
     },
     {
       label: "Pending Check Outs",
@@ -219,6 +239,7 @@ function Dashboard() {
       delta: "Currently checked in",
       icon: Clock,
       tone: "text-blue-600 bg-blue-50",
+      to: "/checkout",
     },
   ];
 
@@ -268,7 +289,7 @@ function Dashboard() {
       <DashboardStats stats={stats} />
 
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <RoomStatus rooms={rooms} statusColor={statusColor} />
+        <RoomStatus rooms={rooms} statusColor={statusColor} activeStays={activeStays} />
         <PendingCheckout activeStays={activeStays} />
       </div>
 

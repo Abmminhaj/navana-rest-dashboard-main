@@ -314,14 +314,6 @@ function ExpensesPage() {
               </div>
             </Field>
 
-            <Field label="Description">
-              <input
-                className={inputClass}
-                placeholder="Short description (optional)"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </Field>
             <Field label="Amount (৳)">
               <input
                 className={inputClass}
@@ -329,6 +321,14 @@ function ExpensesPage() {
                 inputMode="decimal"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+              />
+            </Field>
+            <Field label="Description">
+              <input
+                className={inputClass}
+                placeholder="Short description (optional)"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
               />
             </Field>
             <Field label="Payment Method">

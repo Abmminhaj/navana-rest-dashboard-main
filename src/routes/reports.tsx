@@ -22,7 +22,17 @@ import {
   LineChart,
   Line,
 } from "recharts";
-import { getReportData, percentDelta, type ReportPeriod, type PeriodRow } from "@/lib/reports-data";
+import {
+  getReportData,
+  getRoomIncomeToday,
+  getRoomPopularity,
+  percentDelta,
+  type ReportPeriod,
+  type PeriodRow,
+  type RoomIncomeRow,
+  type RoomPopularityRow,
+} from "@/lib/reports-data";
+import { formatCompactCurrency } from "@/lib/utils";
 
 export const Route = createFileRoute("/reports")({
   head: () => ({ meta: [{ title: "Reports — Navana Rest House" }] }),
@@ -34,10 +44,18 @@ const tabs: ReportPeriod[] = ["Daily", "Weekly", "Monthly", "Yearly"];
 function ReportsPage() {
   const [tab, setTab] = useState<ReportPeriod>("Monthly");
   const [rows, setRows] = useState<PeriodRow[]>([]);
+  const [roomIncomeToday, setRoomIncomeToday] = useState<RoomIncomeRow[]>([]);
+  const [roomPopularity, setRoomPopularity] = useState<RoomPopularityRow[]>([]);
 
   useEffect(() => {
     function load() {
       getReportData(tab).then(setRows);
+
+      if (tab === "Daily") {
+        getRoomIncomeToday().then(setRoomIncomeToday);
+      } else if (tab === "Monthly" || tab === "Yearly") {
+        getRoomPopularity(tab).then(setRoomPopularity);
+      }
     }
     load();
 
@@ -212,7 +230,7 @@ function ReportsPage() {
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => `${v / 1000}k`}
+                  tickFormatter={formatCompactCurrency}
                 />
                 <Tooltip
                   contentStyle={{ borderRadius: 12, border: "1px solid #E2E8F0", fontSize: 12 }}
@@ -245,7 +263,7 @@ function ReportsPage() {
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => `${v / 1000}k`}
+                  tickFormatter={formatCompactCurrency}
                 />
                 <YAxis
                   yAxisId="right"
@@ -327,6 +345,153 @@ function ReportsPage() {
           </table>
         </div>
       </Card>
+
+      {tab === "Daily" && (
+        <Card className="mt-6 print-avoid-break">
+          <div className="border-b border-border px-6 py-4">
+            <h3 className="text-sm font-semibold text-foreground">Room-wise Income — Today</h3>
+            <p className="text-xs text-muted-foreground">
+              আজ কোন Room থেকে Booking Advance, Due পরিশোধ, আর Deposit মিলিয়ে কত এলো
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3">Room</th>
+                  <th className="px-4 py-3 text-right">Booking Advance</th>
+                  <th className="px-4 py-3 text-right">Due Collected</th>
+                  <th className="px-4 py-3 text-right">Deposit</th>
+                  <th className="px-4 py-3 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {roomIncomeToday.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
+                      আজ এখনো কোনো Income রেকর্ড হয়নি
+                    </td>
+                  </tr>
+                ) : (
+                  roomIncomeToday.map((r) => (
+                    <tr key={r.room} className="border-t border-border hover:bg-muted/30">
+                      <td className="px-4 py-3 font-semibold text-foreground">
+                        {r.room}
+                        {r.roomType && (
+                          <span className="ml-2 text-xs font-normal text-muted-foreground">
+                            {r.roomType}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right text-foreground">
+                        ৳{r.booking.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-right text-foreground">
+                        ৳{r.due.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-right text-foreground">
+                        ৳{r.deposit.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-emerald-600">
+                        ৳{r.total.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              {roomIncomeToday.length > 0 && (
+                <tfoot>
+                  <tr className="border-t border-border bg-muted/20 font-semibold text-foreground">
+                    <td className="px-4 py-3">মোট</td>
+                    <td className="px-4 py-3 text-right">
+                      ৳{roomIncomeToday.reduce((s, r) => s + r.booking, 0).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      ৳{roomIncomeToday.reduce((s, r) => s + r.due, 0).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      ৳{roomIncomeToday.reduce((s, r) => s + r.deposit, 0).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right text-emerald-600">
+                      ৳{roomIncomeToday.reduce((s, r) => s + r.total, 0).toLocaleString()}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {(tab === "Monthly" || tab === "Yearly") && (
+        <Card className="mt-6 print-avoid-break">
+          <div className="border-b border-border px-6 py-4">
+            <h3 className="text-sm font-semibold text-foreground">Room Popularity</h3>
+            <p className="text-xs text-muted-foreground">
+              {tab === "Monthly" ? "গত ৬ মাসে" : "গত ৪ বছরে"} কোন Room সবচেয়ে বেশি Book হয়েছে,
+              কোনটা সবচেয়ে কম
+            </p>
+          </div>
+
+          <div className="p-6">
+            {roomPopularity.length === 0 ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                এই সময়ের মধ্যে কোনো Booking পাওয়া যায়নি
+              </p>
+            ) : (
+              <>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={roomPopularity}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                      <XAxis
+                        dataKey="room"
+                        stroke="#94A3B8"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        stroke="#94A3B8"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: 12,
+                          border: "1px solid #E2E8F0",
+                          fontSize: 12,
+                        }}
+                        formatter={(value: number) => [`${value} bookings`, "Bookings"]}
+                      />
+                      <Bar dataKey="count" fill="#7C3AED" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <ol className="mt-6 divide-y divide-border">
+                  {roomPopularity.map((r, index) => (
+                    <li key={r.room} className="flex items-center justify-between py-2.5 text-sm">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-50 text-xs font-bold text-violet-600">
+                          {index + 1}
+                        </span>
+                        <span className="font-semibold text-foreground">Room {r.room}</span>
+                        {r.roomType && (
+                          <span className="text-xs text-muted-foreground">{r.roomType}</span>
+                        )}
+                      </div>
+                      <span className="font-semibold text-foreground">{r.count} bookings</span>
+                    </li>
+                  ))}
+                </ol>
+              </>
+            )}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

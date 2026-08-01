@@ -708,49 +708,6 @@ function BookingPage() {
               <div className="md:col-span-2 border-t border-border pt-4">
                 <SectionTitle title="Uploads (Optional)" />
               </div>
-              <Field label="NID Photo">
-                <div className="flex gap-2">
-                  <label className={buttonGhost + " flex-1 cursor-pointer justify-center"}>
-                    <Upload className="h-4 w-4" />
-                    {nidPhotoName ? "Change Photo" : "Upload"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) =>
-                        handlePhotoSelect(e.target.files?.[0], setNidPhoto, setNidPhotoName)
-                      }
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setCameraFor("nid")}
-                    className={buttonGhost + " flex-1 justify-center"}
-                  >
-                    <Camera className="h-4 w-4" /> Take Photo
-                  </button>
-                </div>
-                {nidPhoto && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <img
-                      src={nidPhoto}
-                      alt="NID preview"
-                      className="h-12 w-12 rounded object-cover"
-                    />
-                    <span className="truncate text-xs text-muted-foreground">{nidPhotoName}</span>
-                    <button
-                      type="button"
-                      className="ml-auto text-muted-foreground hover:text-foreground"
-                      onClick={() => {
-                        setNidPhoto(null);
-                        setNidPhotoName("");
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
-              </Field>
               <Field label="Customer Photo">
                 <div className="flex gap-2">
                   <label className={buttonGhost + " flex-1 cursor-pointer justify-center"}>
@@ -793,6 +750,49 @@ function BookingPage() {
                       onClick={() => {
                         setCustomerPhoto(null);
                         setCustomerPhotoName("");
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </Field>
+              <Field label="NID Photo">
+                <div className="flex gap-2">
+                  <label className={buttonGhost + " flex-1 cursor-pointer justify-center"}>
+                    <Upload className="h-4 w-4" />
+                    {nidPhotoName ? "Change Photo" : "Upload"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) =>
+                        handlePhotoSelect(e.target.files?.[0], setNidPhoto, setNidPhotoName)
+                      }
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setCameraFor("nid")}
+                    className={buttonGhost + " flex-1 justify-center"}
+                  >
+                    <Camera className="h-4 w-4" /> Take Photo
+                  </button>
+                </div>
+                {nidPhoto && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <img
+                      src={nidPhoto}
+                      alt="NID preview"
+                      className="h-12 w-12 rounded object-cover"
+                    />
+                    <span className="truncate text-xs text-muted-foreground">{nidPhotoName}</span>
+                    <button
+                      type="button"
+                      className="ml-auto text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setNidPhoto(null);
+                        setNidPhotoName("");
                       }}
                     >
                       <X className="h-4 w-4" />

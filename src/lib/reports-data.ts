@@ -169,3 +169,112 @@ export function percentDelta(current: number, previous: number): string {
   const sign = pct >= 0 ? "+" : "";
   return `${sign}${pct.toFixed(1)}%`;
 }
+
+// ---------------------------------------------------------------------------
+// Room-wise income breakdown (today only)
+// ---------------------------------------------------------------------------
+
+export interface RoomIncomeRow {
+  room: string;
+  roomType?: string;
+  booking: number; // advance taken when the booking was made, today
+  due: number; // old due cleared today
+  deposit: number; // interim deposit added during an active stay, today
+  total: number;
+}
+
+/**
+ * Breaks today's income down by room: how much came in as a booking advance,
+ * how much as a due payment being cleared, and how much as an interim
+ * deposit during an active stay. Deposits are only reliably datable while a
+ * stay is still active (once checked out, the per-deposit dates collapse
+ * into a single total on the history record), so deposit figures are read
+ * from currently active stays.
+ */
+export async function getRoomIncomeToday(): Promise<RoomIncomeRow[]> {
+  const [bookings, history, activeStays] = await Promise.all([
+    getBookings(),
+    getCustomerHistory(),
+    getActiveStays(),
+  ]);
+
+  const start = dateOnly(new Date());
+  const end = new Date(start);
+  end.setDate(start.getDate() + 1);
+  const inToday = (d: Date | null) => !!d && d >= start && d < end;
+
+  const rows = new Map<string, RoomIncomeRow>();
+  function rowFor(room: string, roomType?: string): RoomIncomeRow {
+    if (!rows.has(room)) {
+      rows.set(room, { room, roomType, booking: 0, due: 0, deposit: 0, total: 0 });
+    }
+    const existing = rows.get(room)!;
+    if (roomType && !existing.roomType) existing.roomType = roomType;
+    return existing;
+  }
+
+  bookings.forEach((b: any) => {
+    if (!b.room || !inToday(parseDateOnly(bookingDate(b.bookingId)))) return;
+    rowFor(b.room, b.roomType).booking += Number(b.advancePayment) || 0;
+  });
+
+  history.forEach((r: CustomerHistoryRecord) => {
+    parseDuePayments(r.checkoutNotes)
+      .filter((p) => inToday(parseDateOnly(p.date)))
+      .forEach((p) => {
+        rowFor(r.room).due += Number(p.amount) || 0;
+      });
+  });
+
+  (activeStays as any[]).forEach((s) => {
+    (s.deposits || [])
+      .filter((d: any) => inToday(parseDateOnly(d.date)))
+      .forEach((d: any) => {
+        rowFor(s.room).deposit += Number(d.amount) || 0;
+      });
+  });
+
+  return Array.from(rows.values())
+    .map((row) => ({ ...row, total: row.booking + row.due + row.deposit }))
+    .filter((row) => row.total > 0)
+    .sort((a, b) => b.total - a.total);
+}
+
+// ---------------------------------------------------------------------------
+// Room popularity (booking count per room, over the Monthly/Yearly window)
+// ---------------------------------------------------------------------------
+
+export interface RoomPopularityRow {
+  room: string;
+  roomType?: string;
+  count: number;
+}
+
+/**
+ * Counts how many bookings each room got within the currently visible
+ * Monthly (last 6 months) or Yearly (last 4 years) window, most-booked
+ * first — so it's easy to see which rooms sell well and which barely get
+ * booked at all.
+ */
+export async function getRoomPopularity(
+  period: Extract<ReportPeriod, "Monthly" | "Yearly">,
+): Promise<RoomPopularityRow[]> {
+  const bookings = await getBookings();
+  const ranges = getPeriodRanges(period);
+  const start = ranges[0].start;
+  const end = ranges[ranges.length - 1].end;
+
+  const rows = new Map<string, RoomPopularityRow>();
+
+  bookings.forEach((b: any) => {
+    if (!b.room) return;
+    const d = parseDateOnly(bookingDate(b.bookingId));
+    if (!d || d < start || d >= end) return;
+
+    const existing = rows.get(b.room) || { room: b.room, roomType: b.roomType, count: 0 };
+    existing.count += 1;
+    rows.set(b.room, existing);
+  });
+
+  return Array.from(rows.values()).sort((a, b) => b.count - a.count);
+}

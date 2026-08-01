@@ -11,6 +11,9 @@ import { getActiveStays } from "@/lib/stay-storage";
 export const Route = createFileRoute("/rooms")({
   head: () => ({ meta: [{ title: "Rooms — Navana Rest House" }] }),
   component: RoomsPage,
+  validateSearch: (search: Record<string, unknown>): { status?: RoomStatus | "All" } => ({
+    status: search.status as RoomStatus | "All" | undefined,
+  }),
 });
 
 const statusStyles: Record<
@@ -49,7 +52,8 @@ const statusStyles: Record<
 };
 
 function RoomsPage() {
-  const [filter, setFilter] = useState<RoomStatus | "All">("All");
+  const { status: statusFromUrl } = Route.useSearch();
+  const [filter, setFilter] = useState<RoomStatus | "All">(statusFromUrl || "All");
   const [typeFilter, setTypeFilter] = useState("All Types");
   const [rooms, setRooms] = useState<Room[]>([]);
 
