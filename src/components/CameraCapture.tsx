@@ -129,7 +129,17 @@ export function CameraCapture({ open, title, onClose, onCapture }: CameraCapture
                 <img src={captured} alt="Captured" className="h-full w-full object-cover" />
               ) : (
                 <video
-                  ref={videoRef}
+                  ref={(el) => {
+                    videoRef.current = el;
+                    // The video element gets unmounted/remounted whenever we
+                    // switch between the live preview and a captured photo
+                    // (e.g. "আবার তোলো" / Retake). Re-attach the already-running
+                    // camera stream to the fresh element here — otherwise the
+                    // new element has no srcObject and shows a black screen.
+                    if (el && streamRef.current) {
+                      el.srcObject = streamRef.current;
+                    }
+                  }}
                   autoPlay
                   playsInline
                   muted
