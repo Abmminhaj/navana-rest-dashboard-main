@@ -25,7 +25,7 @@ jobs:
         run: |
           mkdir -p db-backups
           FILENAME="db-backups/backup-$(date +%Y-%m-%d).sql.gz"
-          pg_dump "$DATABASE_URL" --no-owner --no-privileges | gzip > "$FILENAME"
+          pg_dump "$DATABASE_URL" --no-owner --no-privileges --clean --if-exists | gzip > "$FILENAME"
           echo "Created $FILENAME ($(du -h "$FILENAME" | cut -f1))"
 
       - name: Delete backups older than 180 days

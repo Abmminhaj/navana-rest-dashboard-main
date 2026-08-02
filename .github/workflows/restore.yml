@@ -1,0 +1,45 @@
+name: Restore Database
+
+# Manual only — this overwrites live data, so it must never run automatically.
+on:
+  workflow_dispatch:
+    inputs:
+      backup_file:
+        description: "Exact filename from db-backups/ to restore, e.g. backup-2026-08-02.sql.gz"
+        required: true
+        type: string
+      confirm:
+        description: 'Type "RESTORE" to confirm — this will overwrite live data'
+        required: true
+        type: string
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "RESTORE" ]; then
+            echo "Confirmation text did not match 'RESTORE'. Stopping without touching the database."
+            exit 1
+          fi
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Restore database
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          FILE="db-backups/${{ inputs.backup_file }}"
+          if [ ! -f "$FILE" ]; then
+            echo "File not found: $FILE"
+            echo "Files available in db-backups/:"
+            ls -1 db-backups
+            exit 1
+          fi
+          gunzip -c "$FILE" | psql "$DATABASE_URL"
+          echo "Restore finished from $FILE"
