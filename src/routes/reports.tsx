@@ -24,7 +24,7 @@ import {
 } from "recharts";
 import {
   getReportData,
-  getRoomIncomeToday,
+  getRoomIncomeForDate,
   getRoomPopularity,
   percentDelta,
   type ReportPeriod,
@@ -34,6 +34,14 @@ import {
 } from "@/lib/reports-data";
 import { formatCompactCurrency } from "@/lib/utils";
 
+function todayStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export const Route = createFileRoute("/reports")({
   head: () => ({ meta: [{ title: "Reports — Navana Rest House" }] }),
   component: ReportsPage,
@@ -42,9 +50,10 @@ export const Route = createFileRoute("/reports")({
 const tabs: ReportPeriod[] = ["Daily", "Weekly", "Monthly", "Yearly"];
 
 function ReportsPage() {
-  const [tab, setTab] = useState<ReportPeriod>("Monthly");
+  const [tab, setTab] = useState<ReportPeriod>("Daily");
   const [rows, setRows] = useState<PeriodRow[]>([]);
-  const [roomIncomeToday, setRoomIncomeToday] = useState<RoomIncomeRow[]>([]);
+  const [selectedDate, setSelectedDate] = useState(todayStr());
+  const [roomIncomeForDate, setRoomIncomeForDate] = useState<RoomIncomeRow[]>([]);
   const [roomPopularity, setRoomPopularity] = useState<RoomPopularityRow[]>([]);
 
   useEffect(() => {
@@ -52,7 +61,7 @@ function ReportsPage() {
       getReportData(tab).then(setRows);
 
       if (tab === "Daily") {
-        getRoomIncomeToday().then(setRoomIncomeToday);
+        getRoomIncomeForDate(new Date(`${selectedDate}T00:00:00`)).then(setRoomIncomeForDate);
       } else if (tab === "Monthly" || tab === "Yearly") {
         getRoomPopularity(tab).then(setRoomPopularity);
       }
@@ -65,7 +74,7 @@ function ReportsPage() {
       window.removeEventListener("roomsUpdated", load);
       window.removeEventListener("expensesUpdated", load);
     };
-  }, [tab]);
+  }, [tab, selectedDate]);
 
   const current = rows[rows.length - 1];
   const previous = rows[rows.length - 2];
@@ -348,12 +357,41 @@ function ReportsPage() {
 
       {tab === "Daily" && (
         <Card className="mt-6 print-avoid-break">
-          <div className="border-b border-border px-6 py-4">
-            <h3 className="text-sm font-semibold text-foreground">Room-wise Income — Today</h3>
-            <p className="text-xs text-muted-foreground">
-              আজ কোন Room থেকে Booking Advance, Due পরিশোধ, Deposit, আর Checkout-এর সময় বাকি টাকা
-              মিলিয়ে কত এলো
-            </p>
+          <div className="flex flex-col gap-3 border-b border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">
+                Room-wise Income —{" "}
+                {selectedDate === todayStr()
+                  ? "আজ"
+                  : new Date(`${selectedDate}T00:00:00`).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                কোন Room থেকে Booking Advance, Due পরিশোধ, Deposit, আর Checkout-এর সময় বাকি টাকা
+                মিলিয়ে কত এলো
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={selectedDate}
+                max={todayStr()}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+              />
+              {selectedDate !== todayStr() && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(todayStr())}
+                  className={buttonGhost + " px-3 py-1.5 text-xs"}
+                >
+                  আজ
+                </button>
+              )}
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -368,14 +406,14 @@ function ReportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {roomIncomeToday.length === 0 ? (
+                {roomIncomeForDate.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
-                      আজ এখনো কোনো Income রেকর্ড হয়নি
+                      এই দিনে কোনো Income রেকর্ড নেই
                     </td>
                   </tr>
                 ) : (
-                  roomIncomeToday.map((r) => (
+                  roomIncomeForDate.map((r) => (
                     <tr key={r.room} className="border-t border-border hover:bg-muted/30">
                       <td className="px-4 py-3 font-semibold text-foreground">
                         {r.room}
@@ -404,24 +442,24 @@ function ReportsPage() {
                   ))
                 )}
               </tbody>
-              {roomIncomeToday.length > 0 && (
+              {roomIncomeForDate.length > 0 && (
                 <tfoot>
                   <tr className="border-t border-border bg-muted/20 font-semibold text-foreground">
                     <td className="px-4 py-3">মোট</td>
                     <td className="px-4 py-3 text-right">
-                      ৳{roomIncomeToday.reduce((s, r) => s + r.booking, 0).toLocaleString()}
+                      ৳{roomIncomeForDate.reduce((s, r) => s + r.booking, 0).toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      ৳{roomIncomeToday.reduce((s, r) => s + r.due, 0).toLocaleString()}
+                      ৳{roomIncomeForDate.reduce((s, r) => s + r.due, 0).toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      ৳{roomIncomeToday.reduce((s, r) => s + r.deposit, 0).toLocaleString()}
+                      ৳{roomIncomeForDate.reduce((s, r) => s + r.deposit, 0).toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      ৳{roomIncomeToday.reduce((s, r) => s + r.checkout, 0).toLocaleString()}
+                      ৳{roomIncomeForDate.reduce((s, r) => s + r.checkout, 0).toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-right text-emerald-600">
-                      ৳{roomIncomeToday.reduce((s, r) => s + r.total, 0).toLocaleString()}
+                      ৳{roomIncomeForDate.reduce((s, r) => s + r.total, 0).toLocaleString()}
                     </td>
                   </tr>
                 </tfoot>

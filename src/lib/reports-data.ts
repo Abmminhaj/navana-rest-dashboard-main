@@ -192,36 +192,38 @@ export function percentDelta(current: number, previous: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Room-wise income breakdown (today only)
+// Room-wise income breakdown (for a chosen day, defaults to today)
 // ---------------------------------------------------------------------------
 
 export interface RoomIncomeRow {
   room: string;
   roomType?: string;
-  booking: number; // advance taken when the booking was made, today
-  due: number; // old due cleared today
-  deposit: number; // interim deposit added during an active stay, today
-  checkout: number; // remaining balance settled at actual checkout, today
+  booking: number; // advance taken when the booking was made, that day
+  due: number; // old due cleared that day
+  deposit: number; // interim deposit added during an active stay, that day
+  checkout: number; // remaining balance settled at actual checkout, that day
   total: number;
 }
 
 /**
- * Breaks today's income down by room: booking advance, due payments
+ * Breaks a single day's income down by room: booking advance, due payments
  * cleared, interim deposits, and the remaining balance settled at actual
  * checkout — the same four sources that make up Reports' period income
  * total, so the two stay reconciled. Deposits are read from currently
- * active stays (dated per-deposit) plus stays that checked out today
+ * active stays (dated per-deposit) plus stays that checked out that day
  * (their deposit total is attributed to the checkout day, since per-deposit
  * dates aren't kept after checkout).
  */
-export async function getRoomIncomeToday(): Promise<RoomIncomeRow[]> {
+export async function getRoomIncomeForDate(
+  targetDate: Date = new Date(),
+): Promise<RoomIncomeRow[]> {
   const [bookings, history, activeStays] = await Promise.all([
     getBookings(),
     getCustomerHistory(),
     getActiveStays(),
   ]);
 
-  const start = dateOnly(new Date());
+  const start = dateOnly(targetDate);
   const end = new Date(start);
   end.setDate(start.getDate() + 1);
   const inToday = (d: Date | null) => !!d && d >= start && d < end;
