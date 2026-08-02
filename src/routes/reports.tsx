@@ -351,7 +351,8 @@ function ReportsPage() {
           <div className="border-b border-border px-6 py-4">
             <h3 className="text-sm font-semibold text-foreground">Room-wise Income — Today</h3>
             <p className="text-xs text-muted-foreground">
-              আজ কোন Room থেকে Booking Advance, Due পরিশোধ, আর Deposit মিলিয়ে কত এলো
+              আজ কোন Room থেকে Booking Advance, Due পরিশোধ, Deposit, আর Checkout-এর সময় বাকি টাকা
+              মিলিয়ে কত এলো
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -362,13 +363,14 @@ function ReportsPage() {
                   <th className="px-4 py-3 text-right">Booking Advance</th>
                   <th className="px-4 py-3 text-right">Due Collected</th>
                   <th className="px-4 py-3 text-right">Deposit</th>
+                  <th className="px-4 py-3 text-right">Checkout Payment</th>
                   <th className="px-4 py-3 text-right">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {roomIncomeToday.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
+                    <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
                       আজ এখনো কোনো Income রেকর্ড হয়নি
                     </td>
                   </tr>
@@ -392,6 +394,9 @@ function ReportsPage() {
                       <td className="px-4 py-3 text-right text-foreground">
                         ৳{r.deposit.toLocaleString()}
                       </td>
+                      <td className="px-4 py-3 text-right text-foreground">
+                        ৳{r.checkout.toLocaleString()}
+                      </td>
                       <td className="px-4 py-3 text-right font-bold text-emerald-600">
                         ৳{r.total.toLocaleString()}
                       </td>
@@ -411,6 +416,9 @@ function ReportsPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       ৳{roomIncomeToday.reduce((s, r) => s + r.deposit, 0).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      ৳{roomIncomeToday.reduce((s, r) => s + r.checkout, 0).toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-right text-emerald-600">
                       ৳{roomIncomeToday.reduce((s, r) => s + r.total, 0).toLocaleString()}

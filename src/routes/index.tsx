@@ -81,6 +81,7 @@ function useMonthlyFinancials(
   bookings: any[],
   history: CustomerHistoryRecord[],
   expenses: Expense[],
+  activeStays: any[],
 ) {
   return useMemo(() => {
     const months: { key: string; month: string }[] = [];
@@ -110,15 +111,28 @@ function useMonthlyFinancials(
         .filter((p) => (p.date || "").startsWith(key))
         .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
+      // Same for interim deposits — active stays keep dated deposits, while
+      // checked-out stays only keep a lump total attributed to checkout day.
+      const activeDepositIncome = activeStays.reduce((sum, s: any) => {
+        const dated = (s.deposits || []).filter((d: any) => (d.date || "").startsWith(key));
+        return sum + dated.reduce((s2: number, d: any) => s2 + (Number(d.amount) || 0), 0);
+      }, 0);
+
+      const checkedOutDepositIncome = history
+        .filter((r) => (r.checkoutDate || "").startsWith(key))
+        .reduce((sum, r) => sum + (Number((r as any).deposits) || 0), 0);
+
+      const depositIncome = activeDepositIncome + checkedOutDepositIncome;
+
       const expense = expenses
         .filter((e) => e.date.startsWith(key))
         .reduce((sum, e) => sum + e.amount, 0);
 
-      const income = bookingIncome + checkoutIncome + duePaymentIncome;
+      const income = bookingIncome + checkoutIncome + duePaymentIncome + depositIncome;
 
       return { month, income, expense, profit: income - expense };
     });
-  }, [bookings, history, expenses]);
+  }, [bookings, history, expenses, activeStays]);
 }
 
 function Dashboard() {
@@ -170,9 +184,32 @@ function Dashboard() {
   const occupiedCount = rooms.filter((r) => r.status === "Occupied").length;
   const availableCount = rooms.filter((r) => r.status === "Available").length;
 
+  const todaysDuePayments = useMemo(
+    () =>
+      history
+        .flatMap((r) => parseDuePayments(r.checkoutNotes))
+        .filter((p) => p.date === today)
+        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
+    [history, today],
+  );
+
+  const todaysDeposits = useMemo(() => {
+    const activeDeposits = activeStays.reduce((sum: number, s: any) => {
+      const dated = (s.deposits || []).filter((d: any) => d.date === today);
+      return sum + dated.reduce((s2: number, d: any) => s2 + (Number(d.amount) || 0), 0);
+    }, 0);
+    const checkedOutDeposits = todaysCheckouts.reduce(
+      (sum, r) => sum + (Number((r as any).deposits) || 0),
+      0,
+    );
+    return activeDeposits + checkedOutDeposits;
+  }, [activeStays, todaysCheckouts, today]);
+
   const todaysIncome =
     todaysBookings.reduce((sum, b) => sum + (Number(b.advancePayment) || 0), 0) +
-    todaysCheckouts.reduce((sum, r) => sum + (Number(r.remaining) || 0), 0);
+    todaysCheckouts.reduce((sum, r) => sum + (Number(r.remaining) || 0), 0) +
+    todaysDuePayments +
+    todaysDeposits;
 
   const todaysExpense = expenses
     .filter((e) => e.date === today)
@@ -180,7 +217,7 @@ function Dashboard() {
 
   const todaysProfit = todaysIncome - todaysExpense;
 
-  const monthlyFinancials = useMonthlyFinancials(bookings, history, expenses);
+  const monthlyFinancials = useMonthlyFinancials(bookings, history, expenses, activeStays);
 
   const stats: StatItem[] = [
     {

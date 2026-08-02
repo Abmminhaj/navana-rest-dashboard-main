@@ -134,6 +134,27 @@ export async function getReportData(period: ReportPeriod): Promise<PeriodRow[]> 
       })
       .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
+    // Deposits added during an active stay are datable directly. Once a stay
+    // checks out, its individual deposit dates collapse into a single total
+    // (see customer-history-storage.ts), so that total is attributed to the
+    // checkout day — the same convention already used for checkoutIncome.
+    const activeDepositIncome = activeStays.reduce((sum: number, s: any) => {
+      const dated = (s.deposits || []).filter((d: any) => {
+        const dd = parseDateOnly(d.date);
+        return dd && dd >= start && dd < end;
+      });
+      return sum + dated.reduce((s2: number, d: any) => s2 + (Number(d.amount) || 0), 0);
+    }, 0);
+
+    const checkedOutDepositIncome = history
+      .filter((r) => {
+        const d = parseDateOnly(r.checkoutDate);
+        return d && d >= start && d < end;
+      })
+      .reduce((sum, r) => sum + (Number((r as any).deposits) || 0), 0);
+
+    const depositIncome = activeDepositIncome + checkedOutDepositIncome;
+
     const expense = expenses
       .filter((e) => {
         const d = parseDateOnly(e.date);
@@ -155,7 +176,7 @@ export async function getReportData(period: ReportPeriod): Promise<PeriodRow[]> 
       Math.min(100, Math.round((occupiedNights / (totalRooms * periodDays)) * 100)),
     );
 
-    const income = bookingIncome + checkoutIncome + duePaymentIncome;
+    const income = bookingIncome + checkoutIncome + duePaymentIncome + depositIncome;
 
     return { label, income, expense, profit: income - expense, occupancy };
   });
@@ -180,16 +201,18 @@ export interface RoomIncomeRow {
   booking: number; // advance taken when the booking was made, today
   due: number; // old due cleared today
   deposit: number; // interim deposit added during an active stay, today
+  checkout: number; // remaining balance settled at actual checkout, today
   total: number;
 }
 
 /**
- * Breaks today's income down by room: how much came in as a booking advance,
- * how much as a due payment being cleared, and how much as an interim
- * deposit during an active stay. Deposits are only reliably datable while a
- * stay is still active (once checked out, the per-deposit dates collapse
- * into a single total on the history record), so deposit figures are read
- * from currently active stays.
+ * Breaks today's income down by room: booking advance, due payments
+ * cleared, interim deposits, and the remaining balance settled at actual
+ * checkout — the same four sources that make up Reports' period income
+ * total, so the two stay reconciled. Deposits are read from currently
+ * active stays (dated per-deposit) plus stays that checked out today
+ * (their deposit total is attributed to the checkout day, since per-deposit
+ * dates aren't kept after checkout).
  */
 export async function getRoomIncomeToday(): Promise<RoomIncomeRow[]> {
   const [bookings, history, activeStays] = await Promise.all([
@@ -206,7 +229,7 @@ export async function getRoomIncomeToday(): Promise<RoomIncomeRow[]> {
   const rows = new Map<string, RoomIncomeRow>();
   function rowFor(room: string, roomType?: string): RoomIncomeRow {
     if (!rows.has(room)) {
-      rows.set(room, { room, roomType, booking: 0, due: 0, deposit: 0, total: 0 });
+      rows.set(room, { room, roomType, booking: 0, due: 0, deposit: 0, checkout: 0, total: 0 });
     }
     const existing = rows.get(room)!;
     if (roomType && !existing.roomType) existing.roomType = roomType;
@@ -224,6 +247,14 @@ export async function getRoomIncomeToday(): Promise<RoomIncomeRow[]> {
       .forEach((p) => {
         rowFor(r.room).due += Number(p.amount) || 0;
       });
+
+    // Once a stay checks out, its individual deposit dates collapse into a
+    // single total (see customer-history-storage.ts) — so if the checkout
+    // itself happened today, attribute that whole deposit total to today.
+    if (inToday(parseDateOnly(r.checkoutDate))) {
+      rowFor(r.room).deposit += Number((r as any).deposits) || 0;
+      rowFor(r.room).checkout += Number(r.remaining) || 0;
+    }
   });
 
   (activeStays as any[]).forEach((s) => {
@@ -235,7 +266,7 @@ export async function getRoomIncomeToday(): Promise<RoomIncomeRow[]> {
   });
 
   return Array.from(rows.values())
-    .map((row) => ({ ...row, total: row.booking + row.due + row.deposit }))
+    .map((row) => ({ ...row, total: row.booking + row.due + row.deposit + row.checkout }))
     .filter((row) => row.total > 0)
     .sort((a, b) => b.total - a.total);
 }
