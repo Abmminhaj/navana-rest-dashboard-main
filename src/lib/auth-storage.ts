@@ -12,6 +12,17 @@ export interface AuthUser {
 
 const SESSION_KEY = "navana_session";
 
+// Supabase Auth requires an email+password identity. Staff log in with just
+// a phone number, so each staff member additionally gets a synthetic,
+// never-shown "login email" derived deterministically from their phone —
+// this lets every request also carry a real Supabase Auth session (so RLS
+// policies can eventually require `authenticated`, instead of leaving every
+// table open to the public anon key). See docs/AUTH_MIGRATION.md.
+function authEmailForPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  return `staff-${digits}@navana-rest-house.internal`;
+}
+
 // Restored synchronously from localStorage on module load, so isLoggedIn()/getCurrentUser()
 // work immediately (no flicker) without waiting on a Supabase round-trip.
 // Guarded for SSR, where `window`/`localStorage` don't exist.
@@ -54,6 +65,22 @@ export async function login(
     return { success: false, error: "Mobile Number অথবা Password ভুল।" };
   }
 
+  // Also sign in with real Supabase Auth, using the same phone+password.
+  // This is intentionally non-blocking: until every staff member has a
+  // matching Auth account created (a one-time setup step in the Supabase
+  // dashboard), this call will fail for them and we simply fall back to the
+  // app-level session below, exactly like before. Nothing breaks either way.
+  const { error: authError } = await supabase.auth.signInWithPassword({
+    email: authEmailForPhone(phone.trim()),
+    password,
+  });
+  if (authError) {
+    console.warn(
+      "Supabase Auth sign-in not set up yet for this staff member (app-level login still works):",
+      authError.message,
+    );
+  }
+
   const user: AuthUser = {
     id: row.id,
     name: row.name,
@@ -73,6 +100,7 @@ export function logout() {
   cachedUser = null;
   localStorage.removeItem(SESSION_KEY);
   refreshAuth();
+  void supabase.auth.signOut();
 }
 
 export function refreshAuth() {
