@@ -11,7 +11,7 @@ import {
   selectClass,
   textareaClass,
 } from "@/components/ui-kit";
-import { Plus, Download, Search, Trash2, X } from "lucide-react";
+import { Plus, Download, Search, Trash2, X, SlidersHorizontal, ChevronDown } from "lucide-react";
 import type { Expense } from "@/lib/mock-data";
 import { getExpenses, addExpense, deleteExpense } from "@/lib/expense-storage";
 import {
@@ -42,6 +42,7 @@ function ExpensesPage() {
   const [categories, setCategories] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [datePreset, setDatePreset] = useState("All time");
+  const [showFilters, setShowFilters] = useState(false);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
@@ -368,7 +369,39 @@ function ExpensesPage() {
                 <span className="font-bold text-foreground">৳{total.toLocaleString()}</span>
               </p>
             </div>
-            <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
+            <div className="flex w-full items-center gap-2 lg:w-auto">
+              <div className="relative w-full max-w-xs flex-1 lg:w-64">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  className={inputClass + " pl-9"}
+                  placeholder="Search expenses…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFilters((v) => !v)}
+                className={`relative inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition ${
+                  showFilters
+                    ? "border-primary bg-primary-soft text-primary"
+                    : "border-border bg-card text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Filter
+                {datePreset !== "All time" && (
+                  <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-primary" />
+                )}
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform ${showFilters ? "rotate-180" : ""}`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {showFilters && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/20 p-4">
               {["All time", "Last 7 days", "Last 15 days", "Last 30 days", "Last year"].map(
                 (preset) => (
                   <button
@@ -405,16 +438,7 @@ function ExpensesPage() {
                 }}
               />
             </div>
-            <div className="relative w-full max-w-xs flex-1 lg:w-64">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                className={inputClass + " pl-9"}
-                placeholder="Search expenses…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
