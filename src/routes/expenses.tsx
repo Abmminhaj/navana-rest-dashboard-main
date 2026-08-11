@@ -138,7 +138,7 @@ function ExpensesPage() {
   }
 
   async function handleDelete(id: string) {
-    if (window.confirm("এই Expense-টি মুছে ফেলতে চান?")) {
+    if (window.confirm("এটি মুছে ফেলতে চান?")) {
       await deleteExpense(id);
     }
   }
