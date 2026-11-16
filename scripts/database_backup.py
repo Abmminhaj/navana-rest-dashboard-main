@@ -68,11 +68,18 @@ def validate_database_url(database_url: str) -> str:
     """Reject malformed libpq URIs before invoking a credential-bearing tool."""
     invalid = "Invalid database connection URL; check its format and percent encoding."
     if not isinstance(database_url, str) or not database_url:
-        raise BackupError(invalid)
+        raise BackupError("SUPABASE_DB_URL is empty or missing.")
+    database_url = database_url.strip()
+    if not database_url:
+        raise BackupError("SUPABASE_DB_URL is empty or missing.")
+    if not database_url.startswith(("postgres://", "postgresql://")):
+        raise BackupError("SUPABASE_DB_URL must start with postgresql://. Paste the Session pooler URI only, without quotes.")
     if any(character.isspace() or ord(character) < 32 for character in database_url):
-        raise BackupError(invalid)
+        raise BackupError("SUPABASE_DB_URL contains a space or line break inside the URI. Percent-encode spaces in the password.")
     if re.search(r"%(?![0-9a-fA-F]{2})", database_url):
-        raise BackupError(invalid)
+        raise BackupError("SUPABASE_DB_URL contains an invalid percent escape. Percent-encode reserved characters in the password.")
+    if re.match(r"^postgres(?:ql)?://[^:/?#@]+:(?:\[|%5B)YOUR-PASSWORD(?:\]|%5D)@", database_url, re.IGNORECASE):
+        raise BackupError("Replace the [YOUR-PASSWORD] placeholder in SUPABASE_DB_URL with the database password.")
     try:
         parsed = urlsplit(database_url)
         port = parsed.port
@@ -91,9 +98,9 @@ def validate_database_url(database_url: str) -> str:
             raise ValueError
         if "\x00" in unquote(database_url, errors="strict"):
             raise ValueError
-        _connection_query(parsed.query)
     except (ValueError, UnicodeError):
         raise BackupError(invalid) from None
+    _connection_query(parsed.query)
     return database_url
 
 
@@ -189,7 +196,7 @@ def create_dump(
     On failure this function removes the temporary files itself. A command
     sequence can select a wrapper executable; no shell is ever involved.
     """
-    validate_database_url(database_url)
+    database_url = validate_database_url(database_url)
     work_dir = None
     try:
         parent = Path(temp_dir)

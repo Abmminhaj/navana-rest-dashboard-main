@@ -65,6 +65,9 @@ class ConnectionValidationTests(BackupTestCase):
             with self.subTest(url_kind=url.split(":", 1)[0]):
                 self.assertEqual(backup.validate_database_url(url), url)
 
+    def test_trims_clipboard_whitespace_around_the_uri(self):
+        self.assertEqual(backup.validate_database_url("  " + URL + "\r\n"), URL)
+
     def test_rejects_malformed_urls_without_disclosing_credentials(self):
         marker = "DO_NOT_DISCLOSE_PASSWORD"
         invalid = (
