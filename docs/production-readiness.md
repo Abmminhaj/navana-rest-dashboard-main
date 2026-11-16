@@ -79,3 +79,7 @@ password, and enforce page permissions through RLS. Test migrations on a
 compatible restored copy before reusing them for another database. On the
 current project the access migrations were applied through the Supabase SQL
 Editor.
+
+Apply the legacy login revocation only after the Auth-based client is deployed
+and an administrator has verified access. Old browser tabs should reload after
+this change.
