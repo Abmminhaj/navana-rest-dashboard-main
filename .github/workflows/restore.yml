@@ -1,45 +1,21 @@
-name: Restore Database
+name: Restore Database (recovery instructions)
 
-# Manual only — this overwrites live data, so it must never run automatically.
+# Encrypted backups require the private recovery key, which stays offline.
+# Keep the old entry point visible, but never run legacy gunzip | psql.
 on:
-  workflow_dispatch:
-    inputs:
-      backup_file:
-        description: "Exact filename from db-backups/ to restore, e.g. backup-2026-08-02.sql.gz"
-        required: true
-        type: string
-      confirm:
-        description: 'Type "RESTORE" to confirm — this will overwrite live data'
-        required: true
-        type: string
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
 
 jobs:
   restore:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - name: Check confirmation
+      - name: Require verified encrypted recovery
+        shell: bash
         run: |
-          if [ "${{ inputs.confirm }}" != "RESTORE" ]; then
-            echo "Confirmation text did not match 'RESTORE'. Stopping without touching the database."
-            exit 1
-          fi
-
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
-      - name: Restore database
-        env:
-          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          FILE="db-backups/${{ inputs.backup_file }}"
-          if [ ! -f "$FILE" ]; then
-            echo "File not found: $FILE"
-            echo "Files available in db-backups/:"
-            ls -1 db-backups
-            exit 1
-          fi
-          gunzip -c "$FILE" | psql "$DATABASE_URL"
-          echo "Restore finished from $FILE"
+          echo '::error::Encrypted backups require local verification with the private recovery key. No database was touched.'
+          echo 'Follow docs/database-backups.md: verify the encrypted backup, then rehearse recovery in an isolated compatible database.'
+          echo 'Legacy 20-byte .sql.gz files are empty and must not be restored.'
+          exit 1

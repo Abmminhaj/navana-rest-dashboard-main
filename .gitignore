@@ -31,3 +31,10 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Backup tooling: never commit plaintext dumps, recovery keys, or Python caches.
+__pycache__/
+*.pyc
+*.sql
+*.sql.gz
+*recovery-key*.txt

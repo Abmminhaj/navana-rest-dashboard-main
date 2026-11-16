@@ -1,0 +1,2 @@
+# Public age recipient. Keep the matching private recovery key outside GitHub.
+age1ddt5x336gsrgq3vlufc8yu9hz52zzvrm7dw7j2qfnwspaprxqpgs67ymad
