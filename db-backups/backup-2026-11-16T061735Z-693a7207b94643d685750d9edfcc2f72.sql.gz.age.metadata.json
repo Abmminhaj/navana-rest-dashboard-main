@@ -1,0 +1,19 @@
+{
+  "backup_file": "backup-2026-11-16T061735Z-693a7207b94643d685750d9edfcc2f72.sql.gz.age",
+  "created_at": "2026-11-16T06:17:35Z",
+  "data_rows": 82,
+  "encrypted": {
+    "bytes": 58862,
+    "sha256": "9e6513ee146a28820e80fc7e2700eda89540b9a4e8aa8bcbca6b4566644ff5ca"
+  },
+  "gzip": {
+    "bytes": 58662,
+    "sha256": "6eecf8ff542a0d4722a7ed2b68bbef9418bb1808c21cb799062539f0e71cc3c6"
+  },
+  "schema_version": 1,
+  "sql": {
+    "bytes": 331940,
+    "sha256": "70bbe1cb9245056a07855625846c26586e9140faa60acfef202cd98c385ec91d"
+  },
+  "table_count": 18
+}
