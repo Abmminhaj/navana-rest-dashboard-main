@@ -8,14 +8,15 @@ import {
   useNavigate,
   HeadContent,
   Scripts,
+  type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { TopNav } from "../components/TopNav";
 import NotificationEngine from "../components/NotificationEngine";
-import { loadSettingsCache } from "../lib/settings-storage";
-import { getCurrentUser, canAccess, landingPageFor } from "../lib/auth-storage";
+import { clearSettingsCache, loadSettingsCache } from "../lib/settings-storage";
+import { getCurrentUser, canAccess, landingPageFor, observeAuth, type AuthUser } from "../lib/auth-storage";
 
 function NotFoundComponent() {
   return (
@@ -39,7 +40,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
 
@@ -81,6 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Dashboard — Navana Rest House" },
       { name: "description", content: "Daily operations overview for Navana Rest House." },
       { property: "og:title", content: "Dashboard — Navana Rest House" },
@@ -135,41 +137,40 @@ function RootComponent() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [checked, setChecked] = useState(false);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    loadSettingsCache();
-  }, []);
-
-  // Login + permission guard:
-  //  - signed-out visitors are bounced to /login
-  //  - signed-in visitors are bounced away from /login
-  //  - signed-in visitors who lack permission for the current page are sent
-  //    to a page they *do* have permission for (admins always pass through)
-  // Re-runs on every navigation and whenever login()/logout() fire the
-  // "authUpdated" event, so it reacts immediately (no full reload needed).
-  useEffect(() => {
-    function checkAuth() {
-      const user = getCurrentUser();
-
-      if (!user) {
-        if (pathname !== "/login") navigate({ to: "/login" });
-      } else if (pathname === "/login") {
-        const dest = landingPageFor(user);
-        if (dest) navigate({ to: dest as any });
-      } else if (!canAccess(user, pathname)) {
-        const dest = landingPageFor(user);
-        if (dest && dest !== pathname) navigate({ to: dest as any });
-      }
-
+    function onAuthUpdated() {
+      setUser(getCurrentUser());
       setChecked(true);
     }
+    window.addEventListener("authUpdated", onAuthUpdated);
+    const stopObserving = observeAuth();
+    return () => {
+      window.removeEventListener("authUpdated", onAuthUpdated);
+      stopObserving();
+    };
+  }, []);
 
-    checkAuth();
-    window.addEventListener("authUpdated", checkAuth);
-    return () => window.removeEventListener("authUpdated", checkAuth);
-  }, [pathname]);
+  const staffId = user?.id;
+  useEffect(() => {
+    queryClient.clear();
+    clearSettingsCache();
+    if (staffId) void loadSettingsCache();
+  }, [queryClient, staffId]);
 
-  const user = getCurrentUser();
+  useEffect(() => {
+    if (!checked) return;
+    if (!user) {
+      if (pathname !== "/login") void navigate({ to: "/login", replace: true });
+    } else if (pathname === "/login" || !canAccess(user, pathname)) {
+      const destination = landingPageFor(user);
+      if (destination && destination !== pathname) {
+        void navigate({ to: destination, replace: true });
+      }
+    }
+  }, [checked, navigate, pathname, user]);
+
   const isLoginRoute = pathname === "/login";
   const hasAccess = !!user && (isLoginRoute || canAccess(user, pathname));
   const showChrome = checked && !!user && !isLoginRoute && hasAccess;

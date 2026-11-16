@@ -1,17 +1,25 @@
 # Database backups
 
-The `Backup Database` GitHub Actions workflow runs every Sunday at 02:00
-Asia/Dhaka (Saturday 20:00 UTC), and can also be run manually. It uses the
-`SUPABASE_DB_URL` repository secret and the public age recipients in
-`config/backup-recipients.txt`.
+The `Backup Database` GitHub Actions workflow is scheduled daily at 02:23
+Asia/Dhaka (20:23 UTC on the preceding day). The target is a recovery point no
+more than 24 hours old. In **Actions → Backup Database**, check the age of the
+latest backup and confirm its artifact is available. If the backup is stale or
+a run failed, use **Run workflow** on the default branch once any run in
+progress finishes. GitHub can delay or drop scheduled runs and can disable them
+after 60 days of inactivity in a public repository. If GitHub disables the
+workflow, use **Enable workflow** before running it manually.
+[GitHub scheduling behavior](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+
+The workflow uses the `SUPABASE_DB_URL` repository secret and the public age
+recipients in `config/backup-recipients.txt`.
 
 ## Connection setup
 
 In Supabase, select this project, then **Connect → Direct → Session pooler →
 URI**. Use the session pooler endpoint on port 5432 for GitHub-hosted IPv4
-runners. Replace the password placeholder with the actual database password;
-percent-encode reserved characters in the password. Store the complete URI in
-the GitHub Actions secret `SUPABASE_DB_URL`, without quotes, spaces or newlines.
+runners. Replace the password placeholder with the actual database password
+and percent-encode reserved characters in the password. Store the complete URI
+in the GitHub Actions secret `SUPABASE_DB_URL`, without quotes, spaces or newlines.
 Never paste it into source files, logs, issues or chat. TLS is required.
 
 The old workflow's malformed URI caused `pg_dump` to fail, but the following
@@ -32,22 +40,36 @@ The workflow requires all of the following before publishing anything:
 
 Only `backup-<UTC timestamp>-<unique ID>.sql.gz.age` and its
 `.sql.gz.age.metadata.json` companion are published. The manifest records byte
-counts, SHA-256 hashes and aggregate table/row counts; it contains no SQL rows.
-An encrypted Actions artifact is retained for seven days. On `main`, the same
-pair is committed to `db-backups/`. A run on `fix/database-backups` publishes
-only an artifact, so a real backup can be checked before this repair reaches
-`main`. A failed run publishes no empty or partial backup.
+counts, SHA-256 hashes and aggregate table and row counts. The workflow cleans
+up the temporary plaintext before uploading the pair. Each successful run
+keeps the pair in an Actions artifact for 30 days. The workflow only reads the
+repository, so backup runs produce no commits or Vercel deployments.
 
-The public repository contains encrypted backups only. Plaintext exists in
-private temporary storage during the job and is cleaned up afterwards. The
-workflow does not need the private recovery key. Keep a separate secure copy
-of that key: without it, the backups cannot be recovered. Never commit it or
-upload it as an Actions artifact.
+## Backup retention
 
-Backups are currently retained in Git; there is no automatic deletion. Git
-history would retain old data even if a retention job removed working-tree
-files. These are logical database dumps, not a backup of Storage object bytes,
-project settings, secrets, or database cluster roles.
+From the successful run's **Artifacts** section, download and extract the
+artifact to get the encrypted archive and its manifest. Signed-in GitHub users
+with read access to this public repository can download both files. The
+manifest is readable and decryption requires the private recovery key.
+[GitHub artifact access](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts)
+
+Keep regular copies of both files in secure offline storage, at least weekly
+and before an artifact you need expires. Keep a secure offline copy of the
+private recovery key separately from the backups. Never commit the key or
+upload it to Actions. Earlier files in `db-backups/` remain in Git history.
+The existing encrypted pair can serve as an older recovery point. Always
+verify the pair before restoring it.
+
+For private artifact access, move this workflow, the backup scripts and tests,
+and the public recipient configuration to a dedicated private GitHub
+repository. The repository owner needs to enter the connection URI as the value
+of the `SUPABASE_DB_URL` Actions secret in the private repository. Verify that
+the private workflow publishes a recoverable backup before disabling the public
+workflow and removing its database secret. Vercel can continue deploying app
+changes from the existing repository.
+
+The dump covers the PostgreSQL database. Back up Storage objects, project
+settings, secrets, and database cluster roles separately when required.
 
 ## Verify a downloaded backup
 

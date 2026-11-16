@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  schedule:
+    - cron: "41 3 * * 1"
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci --no-audit
+
+      - name: Audit dependencies
+        run: npm audit --audit-level high --package-lock-only
+
+      - name: Type-check
+        run: npx --no-install tsc --noEmit
+
+      - name: Build for Vercel
+        env:
+          NITRO_PRESET: vercel
+          VITE_SUPABASE_URL: https://ci.example.invalid
+          VITE_SUPABASE_ANON_KEY: sb_publishable_ci_placeholder
+        run: |
+          npm run build
+          test -f .vercel/output/config.json
+
+      - name: Build for Cloudflare Workers
+        env:
+          NITRO_PRESET: cloudflare-module
+          VITE_SUPABASE_URL: https://ci.example.invalid
+          VITE_SUPABASE_ANON_KEY: sb_publishable_ci_placeholder
+        run: |
+          npm run build
+          test -f .output/server/wrangler.json
+
+      - name: Test backup tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends age
+          python3 -m unittest discover -s tests -v

@@ -24,7 +24,7 @@ import {
   type SearchResultType,
 } from "@/lib/global-search";
 import { getCurrentUser, logout, canAccess } from "@/lib/auth-storage";
-import { getActiveStays } from "@/lib/stay-storage";
+import { countActiveStays } from "@/lib/stay-storage";
 
 const navItems = [
   { to: "/", label: "Dashboard" },
@@ -145,15 +145,18 @@ function CheckoutPendingBadge() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const stays = await getActiveStays();
-      if (!cancelled) setCount(stays.length);
+      if (document.hidden) return;
+      const count = await countActiveStays();
+      if (!cancelled) setCount(count);
     }
     load();
-    const interval = window.setInterval(load, 30000);
+    const interval = window.setInterval(load, 60000);
+    document.addEventListener("visibilitychange", load);
     window.addEventListener("activeStaysUpdated", load);
     return () => {
       cancelled = true;
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", load);
       window.removeEventListener("activeStaysUpdated", load);
     };
   }, []);

@@ -102,32 +102,8 @@ export interface StaffMember {
   allowedPages: string[];
 }
 
-const DEFAULT_STAFF: StaffMember[] = [
-  {
-    id: "u1",
-    name: "Arif Rahman",
-    role: "Administrator",
-    email: "arif@navana.com",
-    isAdmin: true,
-    allowedPages: [],
-  },
-  {
-    id: "u2",
-    name: "Sumaiya Khan",
-    role: "Manager",
-    email: "sumaiya@navana.com",
-    allowedPages: [],
-  },
-  {
-    id: "u3",
-    name: "Rakib Hossain",
-    role: "Receptionist",
-    email: "rakib@navana.com",
-    allowedPages: [],
-  },
-];
-
-let cachedStaff: StaffMember[] = [...DEFAULT_STAFF];
+let cachedStaff: StaffMember[] = [];
+let settingsVersion = 0;
 
 function rowToStaff(row: any): StaffMember {
   return {
@@ -144,63 +120,28 @@ export function getStaff(): StaffMember[] {
   return cachedStaff;
 }
 
-export function addStaffMember(member: Omit<StaffMember, "id">): StaffMember {
-  const newMember: StaffMember = {
-    ...member,
-    id: `u${Date.now()}`,
-    allowedPages: member.allowedPages || [],
-  };
-  cachedStaff = [...cachedStaff, newMember];
+export async function saveStaffMember(member: StaffMember, phone: string) {
+  const { error } = await supabase.rpc("save_staff_profile", {
+    p_id: member.id,
+    p_name: member.name,
+    p_role: member.role,
+    p_email: member.email,
+    p_phone: phone,
+    p_is_admin: !!member.isAdmin,
+    p_allowed_pages: member.allowedPages,
+  });
+  if (error) throw error;
+  cachedStaff = [...cachedStaff.filter((staff) => staff.id !== member.id), member].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
   refreshSettings();
-
-  supabase
-    .from("staff")
-    .insert({
-      id: newMember.id,
-      name: newMember.name,
-      role: newMember.role,
-      email: newMember.email,
-      is_admin: newMember.isAdmin || false,
-      allowed_pages: newMember.allowedPages,
-    })
-    .then(({ error }) => {
-      if (error) console.error("addStaffMember failed:", error.message);
-    });
-
-  return newMember;
 }
 
-export function updateStaffMember(id: string, updates: Partial<StaffMember>) {
-  cachedStaff = cachedStaff.map((s) => (s.id === id ? { ...s, ...updates } : s));
-  refreshSettings();
-
-  const dbUpdates: Record<string, unknown> = {};
-  if (updates.name !== undefined) dbUpdates.name = updates.name;
-  if (updates.role !== undefined) dbUpdates.role = updates.role;
-  if (updates.email !== undefined) dbUpdates.email = updates.email;
-  if (updates.isAdmin !== undefined) dbUpdates.is_admin = updates.isAdmin;
-  if (updates.allowedPages !== undefined) dbUpdates.allowed_pages = updates.allowedPages;
-
-  supabase
-    .from("staff")
-    .update(dbUpdates)
-    .eq("id", id)
-    .then(({ error }) => {
-      if (error) console.error("updateStaffMember failed:", error.message);
-    });
-}
-
-export function deleteStaffMember(id: string) {
+export async function deleteStaffMember(id: string) {
+  const { error } = await supabase.from("staff").delete().eq("id", id).select("id").single();
+  if (error) throw error;
   cachedStaff = cachedStaff.filter((s) => s.id !== id);
   refreshSettings();
-
-  supabase
-    .from("staff")
-    .delete()
-    .eq("id", id)
-    .then(({ error }) => {
-      if (error) console.error("deleteStaffMember failed:", error.message);
-    });
 }
 
 // First name of the Administrator — used for the Dashboard's "Good morning, {name}" greeting
@@ -231,7 +172,7 @@ export async function getAdminPasswordIsSet(): Promise<boolean> {
 
 export async function setAdminPassword(newPassword: string) {
   const { error } = await supabase.rpc("set_admin_password", { new_password: newPassword });
-  if (error) console.error("setAdminPassword failed:", error.message);
+  if (error) throw error;
 }
 
 export async function verifyAdminPassword(input: string): Promise<boolean> {
@@ -247,11 +188,13 @@ export async function verifyAdminPassword(input: string): Promise<boolean> {
 // Called once from routes/__root.tsx when the app first loads.
 
 export async function loadSettingsCache() {
+  const version = ++settingsVersion;
   const [profileRes, prefsRes, staffRes] = await Promise.all([
     supabase.from("hotel_profile").select("*").eq("id", 1).maybeSingle(),
     supabase.from("notification_prefs").select("*").eq("id", 1).maybeSingle(),
-    supabase.from("staff").select("*").order("name", { ascending: true }),
+    supabase.from("staff").select("id,name,role,email,is_admin,allowed_pages").order("name", { ascending: true }),
   ]);
+  if (version !== settingsVersion) return;
 
   if (profileRes.error) {
     console.error("loadSettingsCache (hotel_profile) failed:", profileRes.error.message);
@@ -285,11 +228,18 @@ export async function loadSettingsCache() {
 
   if (staffRes.error) {
     console.error("loadSettingsCache (staff) failed:", staffRes.error.message);
-  } else if (staffRes.data && staffRes.data.length > 0) {
+  } else if (staffRes.data) {
     cachedStaff = staffRes.data.map(rowToStaff);
   }
 
   refreshSettings();
+}
+
+export function clearSettingsCache() {
+  settingsVersion++;
+  cachedHotelProfile = { ...DEFAULT_PROFILE };
+  cachedNotificationPrefs = { ...DEFAULT_NOTIFICATIONS };
+  cachedStaff = [];
 }
 
 export function refreshSettings() {

@@ -51,6 +51,18 @@ export async function getActiveStays(): Promise<any[]> {
   return (data || []).map(rowToStay);
 }
 
+export async function countActiveStays() {
+  const { count } = await supabase.from("active_stays").select("id", { count: "exact", head: true });
+  return count ?? 0;
+}
+
+export async function getCheckoutReminders() {
+  const { data } = await supabase
+    .from("active_stays")
+    .select("id,room,expected_check_out");
+  return data ?? [];
+}
+
 export async function saveActiveStay(stay: any) {
   const { error } = await supabase.from("active_stays").insert({
     booking_id: stay.bookingId,

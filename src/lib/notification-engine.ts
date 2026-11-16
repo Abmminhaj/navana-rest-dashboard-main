@@ -1,4 +1,4 @@
-import { getActiveStays } from "./stay-storage";
+import { getCheckoutReminders } from "./stay-storage";
 import { getRooms } from "./room-storage";
 import { getNotificationPrefs } from "./settings-storage";
 import { addNotificationLogEntry } from "./notification-log-storage";
@@ -62,19 +62,19 @@ async function checkPendingCheckouts() {
 
   const notified = getNotifiedCheckouts();
   const now = Date.now();
-  const stays = await getActiveStays();
+  const stays = await getCheckoutReminders();
 
-  stays.forEach((stay: any) => {
+  stays.forEach((stay) => {
     if (notified.includes(stay.id)) return;
 
-    const t = new Date(String(stay.expectedCheckOut).replace(" ", "T")).getTime();
+    const t = new Date(String(stay.expected_check_out).replace(" ", "T")).getTime();
     if (Number.isNaN(t)) return;
 
     const minutesLeft = (t - now) / 60000;
     if (minutesLeft <= 60 && minutesLeft > -60) {
       fireNotification(
         "Checkout Due Soon",
-        `${stay.customer} — Room ${stay.room} checkout is due around ${stay.expectedCheckOut}.`,
+        `Room ${stay.room} checkout is due around ${stay.expected_check_out}.`,
       );
       markCheckoutNotified(stay.id);
     }
@@ -136,6 +136,7 @@ export function startNotificationEngine() {
   checkDailySummary();
 
   intervalId = window.setInterval(() => {
+    if (document.hidden) return;
     checkPendingCheckouts();
     checkDailySummary();
   }, 60 * 1000);

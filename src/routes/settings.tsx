@@ -19,8 +19,7 @@ import {
   saveNotificationPrefs,
   type NotificationPrefs,
   getStaff,
-  addStaffMember,
-  updateStaffMember,
+  saveStaffMember,
   deleteStaffMember,
   type StaffMember,
   setAdminPassword,
@@ -29,7 +28,7 @@ import {
   getNotificationPermission,
   requestNotificationPermission,
 } from "@/lib/notification-engine";
-import { APP_PAGES, getStaffPhone, setStaffCredentials } from "@/lib/auth-storage";
+import { APP_PAGES, authEmailForPhone, getStaffPhone } from "@/lib/auth-storage";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "Settings — Navana Rest House" }] }),
@@ -61,6 +60,8 @@ const NOTIFICATION_ITEMS: { key: keyof NotificationPrefs; label: string; desc: s
   },
 ];
 
+const STAFF_PAGES = APP_PAGES.filter(({ path }) => path !== "/settings");
+
 function SettingsPage() {
   const [profile, setProfile] = useState<HotelProfile | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
@@ -77,7 +78,6 @@ function SettingsPage() {
   const [passwordMsg, setPasswordMsg] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
-  const [editLoginPassword, setEditLoginPassword] = useState("");
   const [editIsAdmin, setEditIsAdmin] = useState(false);
   const [editAllowedPages, setEditAllowedPages] = useState<string[]>([]);
 
@@ -86,16 +86,21 @@ function SettingsPage() {
   const [inviteRole, setInviteRole] = useState("Receptionist");
   const [inviteEmail, setInviteEmail] = useState("");
   const [invitePhone, setInvitePhone] = useState("");
-  const [invitePassword, setInvitePassword] = useState("");
   const [inviteIsAdmin, setInviteIsAdmin] = useState(false);
   const [inviteAllowedPages, setInviteAllowedPages] = useState<string[]>([]);
   const [inviteError, setInviteError] = useState("");
+  const [staffError, setStaffError] = useState("");
 
   useEffect(() => {
-    setProfile(getHotelProfile());
-    setPrefs(getNotificationPrefs());
-    setStaff(getStaff());
+    function syncSettings() {
+      setProfile(getHotelProfile());
+      setPrefs(getNotificationPrefs());
+      setStaff(getStaff());
+    }
+    syncSettings();
     setPermission(getNotificationPermission());
+    window.addEventListener("settingsUpdated", syncSettings);
+    return () => window.removeEventListener("settingsUpdated", syncSettings);
   }, []);
 
   async function handleEnableNotifications() {
@@ -165,34 +170,32 @@ function SettingsPage() {
     setEditEmail(member.email);
     setEditIsAdmin(!!member.isAdmin);
     setEditAllowedPages(member.allowedPages || []);
-    setEditLoginPassword("");
+    setStaffError("");
     setEditPhone(await getStaffPhone(member.id));
   }
 
   async function handleSaveEdit() {
     if (!editingId) return;
-    updateStaffMember(editingId, {
-      name: editName.trim(),
-      role: editRole.trim(),
-      email: editEmail.trim(),
-      isAdmin: editIsAdmin,
-      allowedPages: editAllowedPages,
-    });
-    setStaff(getStaff());
-
-    if (editPhone.trim() || editLoginPassword) {
-      await setStaffCredentials(
-        editingId,
-        editPhone.trim() || undefined,
-        editLoginPassword || undefined,
+    setStaffError("");
+    try {
+      await saveStaffMember(
+        {
+          id: editingId,
+          name: editName.trim(),
+          role: editRole.trim(),
+          email: editEmail.trim(),
+          isAdmin: editIsAdmin,
+          allowedPages: editAllowedPages,
+        },
+        editPhone,
       );
+      setEditingId(null);
+    } catch {
+      setStaffError("Staff update হয়নি। এই নম্বরের Auth account ও admin access যাচাই করুন।");
     }
-
-    setEditingId(null);
-    setEditLoginPassword("");
   }
 
-  function handleDeleteStaff(id: string) {
+  async function handleDeleteStaff(id: string) {
     if (staff.length <= 1) {
       alert("অন্তত একজন Staff Member থাকতেই হবে।");
       return;
@@ -203,8 +206,11 @@ function SettingsPage() {
       return;
     }
     if (window.confirm("এই Staff Member-কে মুছে ফেলতে চান?")) {
-      deleteStaffMember(id);
-      setStaff(getStaff());
+      try {
+        await deleteStaffMember(id);
+      } catch {
+        setStaffError("Staff access সরানো যায়নি। আপনি নিজের admin access সরাতে পারবেন না।");
+      }
     }
   }
 
@@ -213,45 +219,55 @@ function SettingsPage() {
       setInviteError("নাম আর Email দুটোই দিতে হবে।");
       return;
     }
-    if (!invitePhone.trim() || invitePassword.length < 4) {
-      setInviteError("Mobile Number আর কমপক্ষে ৪ ক্যারেক্টারের Password দিতে হবে।");
+    if (!/^\d{6,15}$/.test(invitePhone.replace(/\D/g, ""))) {
+      setInviteError("সঠিক Mobile Number দিন।");
       return;
     }
 
-    const created = addStaffMember({
-      name: inviteName.trim(),
-      role: inviteRole,
-      email: inviteEmail.trim(),
-      isAdmin: inviteIsAdmin,
-      allowedPages: inviteAllowedPages,
-    });
-    setStaff(getStaff());
-    await setStaffCredentials(created.id, invitePhone.trim(), invitePassword);
+    try {
+      await saveStaffMember(
+        {
+          id: crypto.randomUUID(),
+          name: inviteName.trim(),
+          role: inviteRole,
+          email: inviteEmail.trim(),
+          isAdmin: inviteIsAdmin,
+          allowedPages: inviteAllowedPages,
+        },
+        invitePhone,
+      );
+    } catch {
+      setInviteError("Staff যোগ হয়নি। আগে এই নম্বরের confirmed Supabase Auth account তৈরি করুন।");
+      return;
+    }
 
     setShowInvite(false);
     setInviteName("");
     setInviteEmail("");
     setInviteRole("Receptionist");
     setInvitePhone("");
-    setInvitePassword("");
     setInviteIsAdmin(false);
     setInviteAllowedPages([]);
     setInviteError("");
   }
 
-  function handleSavePassword() {
-    if (newPassword.length < 4) {
-      setPasswordMsg("কমপক্ষে ৪ ক্যারেক্টার দিতে হবে।");
+  async function handleSavePassword() {
+    if (newPassword.length < 8 || newPassword.length > 256) {
+      setPasswordMsg("৮ থেকে ২৫৬ ক্যারেক্টারের password দিন।");
       return;
     }
     if (newPassword !== confirmPassword) {
       setPasswordMsg("দুটো Password মিলছে না।");
       return;
     }
-    setAdminPassword(newPassword);
-    setNewPassword("");
-    setConfirmPassword("");
-    setPasswordMsg("✓ Admin Password Update হয়েছে।");
+    try {
+      await setAdminPassword(newPassword);
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordMsg("✓ Admin Password Update হয়েছে।");
+    } catch {
+      setPasswordMsg("Admin password update হয়নি। আবার চেষ্টা করুন।");
+    }
   }
 
   if (!profile || !prefs) return null;
@@ -405,6 +421,7 @@ function SettingsPage() {
             title="Users & Roles"
             action={<Users className="h-4 w-4 text-muted-foreground" />}
           />
+          {staffError && <p className="px-6 py-2 text-xs text-red-600">{staffError}</p>}
           <ul className="divide-y divide-border">
             {staff.map((u) => (
               <li key={u.id} className="px-6 py-3">
@@ -442,13 +459,6 @@ function SettingsPage() {
                           onChange={(e) => setEditPhone(e.target.value)}
                           placeholder="Mobile Number"
                         />
-                        <input
-                          type="password"
-                          className={inputClass}
-                          value={editLoginPassword}
-                          onChange={(e) => setEditLoginPassword(e.target.value)}
-                          placeholder="New Password (ফাঁকা রাখলে আগেরটাই থাকবে)"
-                        />
                       </div>
                     </div>
 
@@ -469,7 +479,7 @@ function SettingsPage() {
                           কোন কোন Page দেখতে পারবে
                         </p>
                         <div className="grid grid-cols-2 gap-1.5">
-                          {APP_PAGES.map((p) => (
+                          {STAFF_PAGES.map((p) => (
                             <label
                               key={p.path}
                               className="flex items-center gap-1.5 text-xs text-foreground"
@@ -587,14 +597,13 @@ function SettingsPage() {
                       value={invitePhone}
                       onChange={(e) => setInvitePhone(e.target.value)}
                     />
-                    <input
-                      type="password"
-                      className={inputClass}
-                      placeholder="Password"
-                      value={invitePassword}
-                      onChange={(e) => setInvitePassword(e.target.value)}
-                    />
                   </div>
+                  {invitePhone.replace(/\D/g, "") && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Supabase-এর Authentication → Users-এ এই login email দিয়ে confirmed user
+                      তৈরি করুন: <code>{authEmailForPhone(invitePhone)}</code>
+                    </p>
+                  )}
                 </div>
 
                 <div className="border-t border-border pt-2">
@@ -614,7 +623,7 @@ function SettingsPage() {
                       কোন কোন Page দেখতে পারবে
                     </p>
                     <div className="grid grid-cols-2 gap-1.5">
-                      {APP_PAGES.map((p) => (
+                      {STAFF_PAGES.map((p) => (
                         <label
                           key={p.path}
                           className="flex items-center gap-1.5 text-xs text-foreground"
@@ -655,7 +664,7 @@ function SettingsPage() {
               </div>
             ) : (
               <button className={buttonPrimary + " w-full"} onClick={() => setShowInvite(true)}>
-                Invite Team Member
+                Add Staff Member
               </button>
             )}
           </div>
@@ -669,8 +678,8 @@ function SettingsPage() {
           <div className="space-y-4 p-6">
             <div className="rounded-lg bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
               এটা Login Password থেকে আলাদা — এই Password শুধু Rooms Page-এ "Available → Occupied"
-              Override করার জন্য ব্যবহার হয় (Full Security না, শুধু ভুল প্রতিরোধের জন্য)। Staff-দের
-              Login Password উপরে "Users & Roles"-এ প্রতিটা staff-এর Edit থেকে বদলাতে পারবেন।
+              Override করার জন্য ব্যবহার হয়। Staff-এর login password Supabase-এর Authentication
+              থেকে পরিচালনা করুন।
             </div>
             <Field label="New Admin Password">
               <input

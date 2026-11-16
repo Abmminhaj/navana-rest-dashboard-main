@@ -63,6 +63,7 @@ function LoginPage() {
                 className={inputClass + " pl-9"}
                 placeholder="01XXXXXXXXX"
                 inputMode="numeric"
+                autoComplete="username"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 autoFocus
@@ -78,6 +79,7 @@ function LoginPage() {
               <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="password"
+                autoComplete="current-password"
                 className={inputClass + " pl-9"}
                 placeholder="••••••••"
                 value={password}
